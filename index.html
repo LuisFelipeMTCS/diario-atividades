@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diário de Atividades</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #6b7385; --line: #e2e5eb;
+    --accent: #1f6feb; --accent-text: #fff; --danger: #c93c37; --chip: #eef2f9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c; --card: #1d2128; --text: #e6e8ec; --muted: #9aa2b1; --line: #2e333c;
+      --accent: #4c8dff; --accent-text: #fff; --danger: #ef6b66; --chip: #262c36;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 24px; padding: 14px 24px;
+           background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; }
+  nav { display: flex; gap: 4px; }
+  nav button { background: none; border: 0; padding: 8px 14px; border-radius: 8px;
+               color: var(--muted); font: inherit; cursor: pointer; }
+  nav button.on { background: var(--chip); color: var(--text); font-weight: 600; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 18px; margin-bottom: 18px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  input, textarea, select { font: inherit; color: var(--text); background: var(--bg);
+          border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  textarea { resize: vertical; min-height: 64px; width: 100%; }
+  .grow { flex: 1 1 200px; }
+  .btn { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text);
+         padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .btn.small { padding: 3px 9px; font-size: 13px; }
+  .btn.danger { color: var(--danger); }
+  .muted { color: var(--muted); }
+  .err { color: var(--danger); min-height: 1.2em; margin: 6px 0 0; font-size: 13px; }
+  .daybar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .daybar h2 { font-size: 16px; margin: 0 8px 0 0; text-transform: capitalize; }
+  .total { margin-left: auto; font-weight: 600; }
+  .item { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 12px 0;
+          border-top: 1px solid var(--line); }
+  .item:first-child { border-top: 0; }
+  .item .desc { white-space: pre-wrap; }
+  .item .meta { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+  .chip { background: var(--chip); border-radius: 999px; padding: 1px 9px; }
+  .item .side { text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: end; }
+  .hours { font-weight: 600; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .report-day td { white-space: pre-wrap; }
+  .empty { padding: 24px 0; text-align: center; color: var(--muted); }
+  .hidden { display: none !important; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+           background: var(--text); color: var(--bg); padding: 8px 16px; border-radius: 8px;
+           opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  @media print {
+    header, .no-print { display: none !important; }
+    body { background: #fff; color: #000; }
+    main { padding: 0; max-width: none; }
+    .card { border: 0; padding: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>📝 Diário de Atividades</h1>
+  <nav>
+    <button data-tab="dia" class="on">Dia</button>
+    <button data-tab="mes">Relatório do mês</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ ABA DIA ============ -->
+  <section id="tab-dia">
+    <form id="form" class="card" autocomplete="off">
+      <div class="row">
+        <label>Data <input type="date" id="f-data" required></label>
+        <label class="grow">Projeto / Cliente <input id="f-projeto" list="dl-projeto" placeholder="ex.: AIE Storage Manager"></label>
+        <label>Categoria <input id="f-categoria" list="dl-categoria" placeholder="ex.: Desenvolvimento"></label>
+        <label>Ticket / Card <input id="f-ticket" placeholder="ex.: #1234" size="10"></label>
+        <label>Horas <input id="f-horas" type="number" step="0.25" min="0" max="24" placeholder="1,5" style="width:80px"></label>
+      </div>
+      <label style="margin-top:12px">O que você fez?
+        <textarea id="f-descricao" required placeholder="Descreva a atividade... (Ctrl+Enter para salvar)"></textarea>
+      </label>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" type="submit" id="btn-salvar">Adicionar</button>
+        <button class="btn hidden" type="button" id="btn-cancelar">Cancelar edição</button>
+      </div>
+      <p class="err" id="err"></p>
+    </form>
+
+    <div class="card">
+      <div class="daybar">
+        <button class="btn small" id="prev" title="Dia anterior">◀</button>
+        <button class="btn small" id="today">Hoje</button>
+        <button class="btn small" id="next" title="Próximo dia">▶</button>
+        <h2 id="day-title"></h2>
+        <span class="total" id="day-total"></span>
+      </div>
+      <div id="list"></div>
+    </div>
+  </section>
+
+  <!-- ============ ABA MÊS ============ -->
+  <section id="tab-mes" class="hidden">
+    <div class="card no-print">
+      <div class="row">
+        <label>Mês <input type="month" id="m-mes"></label>
+        <label>Projeto <select id="m-projeto"><option value="">Todos</option></select></label>
+        <span class="grow"></span>
+        <button class="btn" id="m-copiar">Copiar texto</button>
+        <button class="btn" id="m-csv">Exportar Excel (CSV)</button>
+        <button class="btn primary" id="m-imprimir">Imprimir / PDF</button>
+      </div>
+    </div>
+    <div class="card" id="report"></div>
+  </section>
+</main>
+
+<datalist id="dl-projeto"></datalist>
+<datalist id="dl-categoria"></datalist>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const pad = (n) => String(n).padStart(2, "0");
+const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseIso = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const fmtH = (h) => (Math.round(h * 100) / 100).toLocaleString("pt-BR") + "h";
+const fmtDate = (s) => s.split("-").reverse().join("/");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+let dia = iso(new Date());
+let editando = null;
+let itensDia = [];
+let itensMes = [];
+
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+async function api(method, url, body) {
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" },
+                               body: body ? JSON.stringify(body) : undefined });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.erro || "Erro");
+  return data;
+}
+
+/* ---------------- abas ---------------- */
+document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("on", x === b));
+  $("#tab-dia").classList.toggle("hidden", b.dataset.tab !== "dia");
+  $("#tab-mes").classList.toggle("hidden", b.dataset.tab !== "mes");
+  if (b.dataset.tab === "mes") carregarMes(); else carregarDia();
+});
+
+/* ---------------- sugestões ---------------- */
+async function carregarSugestoes() {
+  const s = await api("GET", "/api/sugestoes");
+  for (const f of ["projeto", "categoria"])
+    $("#dl-" + f).innerHTML = s[f].map((v) => `<option value="${esc(v)}">`).join("");
+}
+
+/* ---------------- dia ---------------- */
+async function carregarDia() {
+  itensDia = await api("GET", "/api/atividades?data=" + dia);
+  const d = parseIso(dia);
+  const hoje = dia === iso(new Date());
+  $("#day-title").textContent = (hoje ? "Hoje — " : "") +
+    d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  const total = itensDia.reduce((a, i) => a + i.horas, 0);
+  $("#day-total").textContent = itensDia.length ? `${itensDia.length} atividade(s) · ${fmtH(total)}` : "";
+  $("#list").innerHTML = itensDia.length ? itensDia.map((i) => `
+    <div class="item">
+      <div>
+        <div class="desc">${esc(i.descricao)}</div>
+        <div class="meta muted">
+          ${i.projeto ? `<span class="chip">${esc(i.projeto)}</span>` : ""}
+          ${i.categoria ? `<span class="chip">${esc(i.categoria)}</span>` : ""}
+          ${i.ticket ? `<span class="chip">${esc(i.ticket)}</span>` : ""}
+        </div>
+      </div>
+      <div class="side">
+        <span class="hours">${i.horas ? fmtH(i.horas) : ""}</span>
+        <span>
+          <button class="btn small" data-edit="${i.id}">Editar</button>
+          <button class="btn small danger" data-del="${i.id}">Excluir</button>
+        </span>
+      </div>
+    </div>`).join("") : `<div class="empty">Nada registrado neste dia ainda.</div>`;
+  if (!editando) $("#f-data").value = dia;
+}
+
+$("#list").onclick = async (e) => {
+  const ed = e.target.dataset.edit, del = e.target.dataset.del;
+  if (ed) {
+    const i = itensDia.find((x) => x.id == ed);
+    editando = i.id;
+    for (const f of ["data", "projeto", "categoria", "ticket", "descricao", "horas"]) $("#f-" + f).value = i[f] || "";
+    $("#btn-salvar").textContent = "Salvar alterações";
+    $("#btn-cancelar").classList.remove("hidden");
+    $("#f-descricao").focus();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  if (del && confirm("Excluir esta atividade?")) {
+    await api("DELETE", "/api/atividades/" + del);
+    if (editando == del) limparForm();
+    toast("Atividade excluída");
+    carregarDia();
+  }
+};
+
+function limparForm(manterContexto = false) {
+  editando = null;
+  $("#btn-salvar").textContent = "Adicionar";
+  $("#btn-cancelar").classList.add("hidden");
+  $("#f-descricao").value = ""; $("#f-horas").value = ""; $("#f-ticket").value = "";
+  if (!manterContexto) { $("#f-projeto").value = ""; $("#f-categoria").value = ""; }
+  $("#f-data").value = dia;
+  $("#err").textContent = "";
+}
+
+$("#btn-cancelar").onclick = () => limparForm(true);
+
+$("#form").onsubmit = async (e) => {
+  e.preventDefault();
+  const body = {};
+  for (const f of ["data", "projeto", "categoria", "ticket", "descricao", "horas"]) body[f] = $("#f-" + f).value;
+  try {
+    if (editando) await api("PUT", "/api/atividades/" + editando, body);
+    else await api("POST", "/api/atividades", body);
+    toast(editando ? "Alterações salvas" : "Atividade registrada");
+    dia = body.data;
+    limparForm(true);   // mantém projeto/categoria para lançar a próxima mais rápido
+    carregarDia(); carregarSugestoes();
+    $("#f-descricao").focus();
+  } catch (err) { $("#err").textContent = err.message; }
+};
+
+$("#f-descricao").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("#form").requestSubmit();
+});
+
+const mudaDia = (delta) => { const d = parseIso(dia); d.setDate(d.getDate() + delta); dia = iso(d); carregarDia(); };
+$("#prev").onclick = () => mudaDia(-1);
+$("#next").onclick = () => mudaDia(1);
+$("#today").onclick = () => { dia = iso(new Date()); carregarDia(); };
+
+/* ---------------- mês ---------------- */
+$("#m-mes").value = dia.slice(0, 7);
+
+async function carregarMes() {
+  const mes = $("#m-mes").value;
+  if (!mes) return;
+  itensMes = await api("GET", "/api/atividades?mes=" + mes);
+  const projetos = [...new Set(itensMes.map((i) => i.projeto).filter(Boolean))].sort();
+  const sel = $("#m-projeto"), atual = sel.value;
+  sel.innerHTML = `<option value="">Todos</option>` + projetos.map((p) => `<option>${esc(p)}</option>`).join("");
+  sel.value = projetos.includes(atual) ? atual : "";
+  renderMes();
+}
+
+function filtrados() {
+  const p = $("#m-projeto").value;
+  return p ? itensMes.filter((i) => i.projeto === p) : itensMes;
+}
+
+function nomeMes() {
+  const [y, m] = $("#m-mes").value.split("-").map(Number);
+  const s = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  return s[0].toUpperCase() + s.slice(1);
+}
+
+function renderMes() {
+  const itens = filtrados();
+  const total = itens.reduce((a, i) => a + i.horas, 0);
+  const porProjeto = {};
+  for (const i of itens) porProjeto[i.projeto || "(sem projeto)"] = (porProjeto[i.projeto || "(sem projeto)"] || 0) + i.horas;
+  const dias = new Set(itens.map((i) => i.data)).size;
+  const proj = $("#m-projeto").value;
+
+  if (!itens.length) { $("#report").innerHTML = `<div class="empty">Nenhuma atividade registrada em ${nomeMes()}.</div>`; return; }
+
+  $("#report").innerHTML = `
+    <h2 style="margin:0 0 4px">Relatório de atividades — ${esc(nomeMes())}</h2>
+    <p class="muted" style="margin:0 0 16px">${proj ? "Projeto: " + esc(proj) + " · " : ""}
+      ${itens.length} atividades · ${dias} dias trabalhados · <b>${fmtH(total)}</b> no total</p>
+
+    <h3 style="font-size:14px;margin:16px 0 6px">Resumo por projeto</h3>
+    <table>
+      <tr><th>Projeto</th><th class="num">Horas</th></tr>
+      ${Object.entries(porProjeto).sort((a, b) => b[1] - a[1]).map(([p, h]) =>
+        `<tr><td>${esc(p)}</td><td class="num">${fmtH(h)}</td></tr>`).join("")}
+      <tr><td><b>Total</b></td><td class="num"><b>${fmtH(total)}</b></td></tr>
+    </table>
+
+    <h3 style="font-size:14px;margin:22px 0 6px">Detalhamento</h3>
+    <table class="report-day">
+      <tr><th>Data</th><th>Projeto</th><th>Atividade</th><th class="num">Horas</th></tr>
+      ${itens.map((i) => `<tr>
+        <td class="num" style="text-align:left">${fmtDate(i.data)}</td>
+        <td>${esc(i.projeto)}${i.categoria ? `<div class="muted" style="font-size:12px">${esc(i.categoria)}</div>` : ""}</td>
+        <td>${esc(i.descricao)}${i.ticket ? ` <span class="muted">(${esc(i.ticket)})</span>` : ""}</td>
+        <td class="num">${i.horas ? fmtH(i.horas) : ""}</td></tr>`).join("")}
+    </table>`;
+}
+
+function textoMes() {
+  const itens = filtrados();
+  const total = itens.reduce((a, i) => a + i.horas, 0);
+  let out = `Relatório de atividades — ${nomeMes()}\n`;
+  if ($("#m-projeto").value) out += `Projeto: ${$("#m-projeto").value}\n`;
+  out += `Total: ${fmtH(total)}\n`;
+  let ultimo = "";
+  for (const i of itens) {
+    if (i.data !== ultimo) { out += `\n${fmtDate(i.data)}\n`; ultimo = i.data; }
+    out += `- ${i.projeto ? "[" + i.projeto + "] " : ""}${i.descricao.replace(/\n/g, " ")}` +
+           `${i.ticket ? " (" + i.ticket + ")" : ""}${i.horas ? " — " + fmtH(i.horas) : ""}\n`;
+  }
+  return out;
+}
+
+$("#m-mes").onchange = carregarMes;
+$("#m-projeto").onchange = renderMes;
+$("#m-imprimir").onclick = () => window.print();
+$("#m-csv").onclick = () => { location.href = "/api/exportar.csv?mes=" + $("#m-mes").value +
+  "&projeto=" + encodeURIComponent($("#m-projeto").value); };
+$("#m-copiar").onclick = async () => {
+  try { await navigator.clipboard.writeText(textoMes()); toast("Texto copiado"); }
+  catch { prompt("Copie o texto abaixo:", textoMes()); }
+};
+
+/* ---------------- início ---------------- */
+carregarSugestoes();
+carregarDia();
+$("#f-descricao").focus();
+</script>
+</body>
+</html>
