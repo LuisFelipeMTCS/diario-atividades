@@ -10,8 +10,12 @@ import io
 import json
 import os
 import re
+import hashlib
 import shutil
 import sqlite3
+import subprocess
+import tempfile
+import threading
 import unicodedata
 import zipfile
 from datetime import date, datetime
@@ -41,7 +45,7 @@ relatorio.carregar_env(os.path.join(BASE_DIR, ".env"))
 HOST = os.environ.get("DIARIO_HOST", "127.0.0.1")
 PORT = int(os.environ.get("DIARIO_PORT", "8765"))
 
-VERSAO = "4"  # o index.html confere: se o servidor for de outra versão, pede para reiniciar o app
+VERSAO = "6"  # o index.html confere: se o servidor for de outra versão, pede para reiniciar o app
 FIELDS = ("data", "projeto", "categoria", "ticket", "descricao", "horas", "entregavel")
 
 
@@ -387,6 +391,58 @@ def salvar_ia(payload):
     return ia_publica()
 
 
+# ---------------------------------------------------------------- PDF fiel (LibreOffice)
+# A pré-visualização fiel converte o .docx em PDF com o LibreOffice instalado na máquina e o navegador
+# mostra as páginas (pdf.js). Sem LibreOffice, a tela usa uma aproximação feita no navegador.
+
+SOFFICE = os.environ.get("DIARIO_SOFFICE") or shutil.which("soffice") or shutil.which("libreoffice")
+CACHE_DIR = os.path.join(DATA_DIR, "cache")
+_lock_lo = threading.Lock()  # o LibreOffice não aceita duas conversões ao mesmo tempo no mesmo perfil
+
+
+def para_pdf(conteudo, ext="docx"):
+    if not SOFFICE:
+        raise RuntimeError("LibreOffice não encontrado. Instale com: sudo apt install libreoffice-writer")
+    perfil_lo = os.path.join(CACHE_DIR, "libreoffice")  # perfil separado: não briga com um LibreOffice aberto
+    os.makedirs(perfil_lo, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        origem = os.path.join(tmp, "documento." + ext)
+        with open(origem, "wb") as f:
+            f.write(conteudo)
+        cmd = [SOFFICE, f"-env:UserInstallation=file://{perfil_lo}", "--headless", "--norestore", "--nologo",
+               "--nolockcheck", "--convert-to", "pdf", "--outdir", tmp, origem]
+        with _lock_lo:
+            try:
+                r = subprocess.run(cmd, capture_output=True, timeout=180)
+            except subprocess.TimeoutExpired:
+                raise RuntimeError("O LibreOffice demorou demais para converter o documento.")
+        destino = os.path.join(tmp, "documento.pdf")
+        if not os.path.exists(destino):
+            raise RuntimeError("O LibreOffice não conseguiu converter: "
+                               + (r.stderr.decode(errors="ignore").strip()[-300:] or "erro desconhecido"))
+        with open(destino, "rb") as f:
+            return f.read()
+
+
+def pdf_do_arquivo(path):
+    """PDF de um template/referência, guardado em cache enquanto o arquivo não mudar."""
+    if path.lower().endswith(".pdf"):
+        with open(path, "rb") as f:
+            return f.read()
+    st = os.stat(path)
+    chave = hashlib.sha1(f"{path}|{st.st_mtime}|{st.st_size}".encode()).hexdigest()
+    cache = os.path.join(CACHE_DIR, "pdf", chave + ".pdf")
+    if os.path.exists(cache):
+        with open(cache, "rb") as f:
+            return f.read()
+    with open(path, "rb") as f:
+        pdf = para_pdf(f.read(), path.rsplit(".", 1)[1].lower())
+    os.makedirs(os.path.dirname(cache), exist_ok=True)
+    with open(cache, "wb") as f:
+        f.write(pdf)
+    return pdf
+
+
 # ---------------------------------------------------------------- rascunhos
 
 def rascunho_path(mes, projeto):
@@ -449,7 +505,7 @@ class Handler(BaseHTTPRequestHandler):
             f.write(md)
         return self.send(200, {"markdown": md, "perfil": pid})
 
-    def baixar_docx(self):
+    def baixar_docx(self, como_pdf=False):
         try:
             body = self.read_json()
             mes, projeto = body.get("mes", ""), body.get("projeto", "")
@@ -465,8 +521,12 @@ class Handler(BaseHTTPRequestHandler):
             capa["subtitulo"] = capa["subtitulo"].replace("{mes}", capa["mes"])
             conteudo = relatorio.montar_docx(os.path.join(perfil_dir(pid), "padrao", padrao[0]),
                                              str(body.get("markdown") or ""), capa)
+            if como_pdf:
+                conteudo = para_pdf(conteudo, "docx")
         except (ValueError, json.JSONDecodeError, RuntimeError) as e:
             return self.send(400, {"erro": str(e)})
+        if como_pdf:
+            return self.send(200, conteudo, "application/pdf", {"Content-Disposition": "inline"})
         nome = f"Relatório de Atividades - {relatorio.nome_mes(mes)}{' - ' + projeto if projeto else ''}.docx"
         return self.send(200, conteudo, FORMATOS["docx"],
                          {"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nome)}"})
@@ -504,9 +564,16 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, perfil_completo(pid))
                 if not nome:
                     return self.send(404, {"erro": "Arquivo não encontrado."})
+                if qs.get("pdf"):  # versão em PDF (LibreOffice) para miniatura e visualizador
+                    try:
+                        pdf = pdf_do_arquivo(os.path.join(perfil_dir(pid), tipo, nome))
+                    except RuntimeError as e:
+                        return self.send(400, {"erro": str(e)})
+                    return self.send(200, pdf, "application/pdf", {"Content-Disposition": "inline"})
+                modo = "inline" if qs.get("inline") else "attachment"  # inline = abrir no visualizador
                 with open(os.path.join(perfil_dir(pid), tipo, nome), "rb") as f:
                     return self.send(200, f.read(), FORMATOS[nome.rsplit(".", 1)[1].lower()],
-                                     {"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nome)}"})
+                                     {"Content-Disposition": f"{modo}; filename*=UTF-8''{quote(nome)}"})
 
             m = re.fullmatch(r"/static/([\w.-]+\.js)", url.path)  # bibliotecas da pré-visualização (sem internet)
             if m and os.path.isfile(os.path.join(BASE_DIR, "static", m.group(1))):
@@ -514,7 +581,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, f.read(), "text/javascript; charset=utf-8")
 
             if url.path == "/api/versao":
-                return self.send(200, {"versao": VERSAO})
+                return self.send(200, {"versao": VERSAO, "pdf": bool(SOFFICE)})
 
             if url.path in ("/api/ia", "/api/relatorio/config"):
                 return self.send(200, ia_publica())
@@ -606,6 +673,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(400, {"erro": str(e)})
         if path == "/api/relatorio/docx":
             return self.baixar_docx()
+        if path == "/api/relatorio/pdf":  # pré-visualização fiel
+            return self.baixar_docx(como_pdf=True)
         if path != "/api/atividades":
             return self.send(404, {"erro": "não encontrado"})
         try:

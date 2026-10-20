@@ -241,6 +241,12 @@
   .preview.doc .docx-wrapper { background: transparent; padding: 18px 0; }
   .preview.doc .docx-wrapper > section.docx { box-shadow: 0 2px 10px rgba(0, 0, 0, .35); margin-bottom: 18px; }
   .pv-wrap { position: relative; min-width: 0; }
+  .pdf-paginas { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 16px 0; }
+  .pdf-paginas canvas { background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .35); display: block; }
+  .thumb-pg .pdf-paginas { padding: 0; gap: 0; }
+  .thumb-pg .pdf-paginas canvas { box-shadow: none; }
+  .pv-modo { position: absolute; left: 10px; bottom: 8px; z-index: 2; font-size: 11px; padding: 2px 8px; border-radius: 99px;
+             background: rgba(0, 0, 0, .5); color: #fff; pointer-events: none; }
   .pv-status { position: absolute; top: 8px; right: 12px; z-index: 2; font-size: 12px; padding: 3px 9px; border-radius: 99px;
                background: rgba(0, 0, 0, .55); color: #fff; pointer-events: none; transition: opacity .2s; }
   .pv-status:empty { opacity: 0; }
@@ -280,6 +286,37 @@
   .modelos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .modelos .card { margin: 0; display: flex; flex-direction: column; gap: 12px; }
   .modelos h3 { font-size: 14.5px; }
+  .mhead { display: flex; align-items: center; gap: 10px; }
+  .mhead h3 { flex: 1; }
+  .count { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; background: var(--surface-2); color: var(--muted); }
+  .count.tem { background: var(--accent-soft); color: var(--accent); }
+  .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .thumbs:empty { display: none; }
+  .thumb { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
+  .thumb-pg { position: relative; height: 190px; overflow: hidden; background: #e9ebee; cursor: zoom-in; border-bottom: 1px solid var(--line); }
+  .thumb-pg .docx-wrapper { background: transparent !important; padding: 0 !important; display: block !important; }
+  .thumb-pg section.docx { box-shadow: none !important; margin: 0 auto !important; }
+  .thumb-pg section.docx ~ section.docx { display: none !important; }
+  .thumb-pg .icone-arq { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #6b7480; }
+  .thumb-pg .icone-arq span { background: #fff; border: 1px solid #d5d9de; border-radius: 6px; padding: 26px 18px; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+  .thumb-pg::after { content: "Visualizar"; position: absolute; inset: auto 8px 8px auto; font-size: 11.5px; font-weight: 600; background: rgba(0,0,0,.6);
+                     color: #fff; padding: 3px 8px; border-radius: 99px; opacity: 0; transition: opacity .15s; }
+  .thumb-pg:hover::after { opacity: 1; }
+  .thumb-info { padding: 8px 10px 4px; font-size: 12.5px; min-width: 0; }
+  .thumb-info b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+  .thumb-info span { color: var(--muted); font-size: 11.5px; }
+  .thumb-acoes { display: flex; gap: 4px; padding: 4px 8px 8px; }
+  .thumb-acoes .btn { padding: 3px 8px; font-size: 12px; flex: 1; }
+  .drop.compacto { padding: 10px; border-width: 1.5px; }
+  .modal { position: fixed; inset: 0; z-index: 20; background: rgba(8, 12, 15, .72); display: grid; place-items: center; padding: 24px; }
+  .modal-box { background: var(--surface); border-radius: 14px; width: min(1000px, 100%); height: min(92vh, 100%); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .modal-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .modal-head b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .modal-body { flex: 1; overflow: auto; background: #5b6066; }
+  .modal-body .docx-wrapper { background: transparent; padding: 20px 0; }
+  .modal-body section.docx { box-shadow: 0 2px 10px rgba(0,0,0,.35); margin-bottom: 20px; }
+  .modal-body iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+  .modal-body .carregando { color: #fff; text-align: center; padding: 60px; }
   .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer;
           color: var(--muted); transition: border-color .15s, background .15s; }
   .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
@@ -523,7 +560,7 @@ Texto com **negrito**, *itálico*, ~~riscado~~ e [link](https://…).
 | Coluna | Coluna |
 |---|---|
 | a | b |"></textarea>
-          <div class="pv-wrap"><div class="pv-status" id="pv-status"></div><div class="preview" id="preview"></div></div>
+          <div class="pv-wrap"><div class="pv-status" id="pv-status"></div><div class="pv-modo" id="pv-modo"></div><div class="preview" id="preview"></div></div>
         </div>
         <p class="err" id="ia-err"></p>
       </div>
@@ -600,18 +637,18 @@ Texto com **negrito**, *itálico*, ~~riscado~~ e [link](https://…).
 
             <div class="modelos" style="margin-top:18px">
               <div class="card" data-modelo="padrao">
-                <div><h3>Template (.docx / .dotx)</h3>
-                  <div class="muted small">Logo, cabeçalho, rodapé, fontes, cores e estilos. A IA nunca mexe na formatação.</div></div>
-                <div class="drop" tabindex="0"><span class="icone">📄</span><div class="status"></div></div>
+                <div class="mhead"><h3>Template</h3><span class="count"></span></div>
+                <div class="muted small">.docx ou .dotx com logo, cabeçalho, rodapé, fontes e estilos. A IA nunca mexe na formatação.</div>
+                <div class="thumbs"></div>
+                <div class="drop" tabindex="0"><div class="status"></div></div>
                 <input type="file" accept=".docx,.dotx" class="hidden">
-                <ul class="arquivos"></ul>
               </div>
               <div class="card" data-modelo="referencia" data-multiplo>
-                <div><h3>Relatórios de referência</h3>
-                  <div class="muted small">Até 10 relatórios prontos do jeito que o cliente espera. A IA copia a estrutura e o tom.</div></div>
-                <div class="drop" tabindex="0"><span class="icone">📚</span><div class="status"></div></div>
+                <div class="mhead"><h3>Relatórios de referência</h3><span class="count"></span></div>
+                <div class="muted small">Relatórios prontos do jeito que o cliente espera (.docx, .dotx ou .pdf). A IA copia a estrutura e o tom.</div>
+                <div class="thumbs"></div>
+                <div class="drop" tabindex="0"><div class="status"></div></div>
                 <input type="file" accept=".docx,.dotx,.pdf" class="hidden" multiple>
-                <ul class="arquivos"></ul>
               </div>
             </div>
             <p class="err" id="m-err"></p>
@@ -676,8 +713,18 @@ Texto com **negrito**, *itálico*, ~~riscado~~ e [link](https://…).
 <datalist id="dl-projeto"></datalist>
 <datalist id="dl-categoria"></datalist>
 <div class="toast" id="toast"></div>
+<div class="modal hidden" id="viewer" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-head">
+      <b id="v-nome"></b><span class="muted small" id="v-info"></span><span class="spacer" style="flex:1"></span>
+      <a class="btn sm" id="v-baixar">Baixar</a><button class="btn sm" id="v-fechar">Fechar ✕</button>
+    </div>
+    <div class="modal-body" id="v-corpo"></div>
+  </div>
+</div>
 <script src="/static/jszip.min.js"></script>
 <script src="/static/docx-preview.min.js"></script>
+<script src="/static/pdf.min.js"></script>
 <style id="pv-style"></style>
 
 <script>
@@ -744,7 +791,7 @@ function rota() {
   $$("nav a").forEach((a) => a.classList.toggle("on", a.dataset.view === v));
   if (v === "hoje") carregarDia();
   if (v === "relatorio") carregarRelatorio();
-  if (v === "config") { carregarPerfis().then(renderPerfis); carregarIA(); renderTema(); }
+  if (v === "config") { Promise.all([carregarPerfis(), versaoPronta]).then(renderPerfis); carregarIA(); renderTema(); }
   window.scrollTo(0, 0);
 }
 window.addEventListener("hashchange", rota);
@@ -950,7 +997,7 @@ async function carregarRelatorio() {
   const sel = $("#r-projeto"), atual = sel.value;
   sel.innerHTML = `<option value="">Todos os projetos</option>` + projetos.map((p) => `<option>${esc(p)}</option>`).join("");
   sel.value = projetos.includes(atual) ? atual : "";
-  await carregarPerfis();
+  await Promise.all([carregarPerfis(), versaoPronta]);
   escolherPerfilRel();
   renderAtividades();
   await carregarRascunho();
@@ -1099,8 +1146,30 @@ async function carregarRascunho() {
   renderPreview(true);
 }
 
-/** Pré-visualização do documento de verdade: o servidor monta o .docx sobre o template do modelo e o
- *  navegador desenha as páginas (capa, cabeçalho, rodapé, estilos). Sem template, mostra uma prévia simples. */
+/* ---------- PDF (pdf.js): páginas exatamente como o LibreOffice as diagrama ---------- */
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "/static/pdf.worker.min.js";
+const estadoPdf = { disponivel: false, ultimo: null };   // disponivel = o servidor tem LibreOffice
+async function desenharPdf(dados, largura, maxPaginas = Infinity) {
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(dados.slice(0)) }).promise;
+  const box = document.createElement("div");
+  box.className = "pdf-paginas";
+  const nitidez = Math.min(2, window.devicePixelRatio || 1);
+  for (let i = 1; i <= Math.min(doc.numPages, maxPaginas); i++) {
+    const pg = await doc.getPage(i);
+    const base = pg.getViewport({ scale: 1 }), escala = largura / base.width;
+    const vp = pg.getViewport({ scale: escala * nitidez });
+    const c = document.createElement("canvas");
+    c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+    c.style.width = `${Math.floor(largura)}px`; c.style.height = `${Math.floor(base.height * escala)}px`;
+    await pg.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+    box.appendChild(c);
+  }
+  box.dataset.paginas = doc.numPages;
+  return box;
+}
+
+/** Pré-visualização do relatório. Com LibreOffice: o servidor monta o .docx sobre o template, converte em PDF
+ *  e a tela mostra as páginas (fiel ao Word/Drive). Sem LibreOffice: aproximação feita no navegador. */
 let previewT, previewSeq = 0;
 function renderPreview(imediato = false) {
   clearTimeout(previewT);
@@ -1108,25 +1177,35 @@ function renderPreview(imediato = false) {
     const md = $("#ia-md").value, seq = ++previewSeq, pv = $("#preview");
     $("#ed-info").dataset.palavras = (md.match(/\S+/g) || []).length;
     renderChecks();
-    if (!md.trim()) { pv.classList.remove("doc"); pv.innerHTML = `<div class="vazio">A pré-visualização aparece aqui.</div>`; return; }
+    if (!md.trim()) { pv.classList.remove("doc"); pv.innerHTML = `<div class="vazio">A pré-visualização aparece aqui.</div>`; $("#pv-modo").textContent = ""; return; }
     const p = perfilRel();
     let aviso = "";
-    if (p.arquivos?.padrao && window.docx) {
+    if (p.arquivos?.padrao) {
       $("#pv-status").textContent = "Atualizando…";
       try {
-        const r = await fetch("/api/relatorio/docx", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...chaveRascunho(), perfil: p.id, markdown: md }) });
-        if (!r.ok) throw new Error((await r.json()).erro || "Erro ao montar o documento");
-        const blob = await r.blob();
-        if (seq !== previewSeq) return;  // já há uma versão mais nova a caminho
-        const destino = document.createElement("div");
-        await docx.renderAsync(blob, destino, null, { className: "docx", inWrapper: true, breakPages: true,
-          ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, renderFootnotes: true,
-          useBase64URL: true, experimental: true });
-        if (seq !== previewSeq) return;
-        const pos = pv.scrollTop / Math.max(1, pv.scrollHeight - pv.clientHeight);
-        pv.classList.add("doc"); pv.replaceChildren(destino); ajustarZoom();
-        pv.scrollTop = pos * (pv.scrollHeight - pv.clientHeight);
+        const corpo = JSON.stringify({ ...chaveRascunho(), perfil: p.id, markdown: md });
+        const opts = { method: "POST", headers: { "Content-Type": "application/json" }, body: corpo };
+        if (estadoPdf.disponivel && window.pdfjsLib) {
+          const r = await fetch("/api/relatorio/pdf", opts);
+          if (!r.ok) throw new Error((await r.json()).erro || "Erro ao montar o documento");
+          const dados = await r.arrayBuffer();
+          if (seq !== previewSeq) return;  // já há uma versão mais nova a caminho
+          estadoPdf.ultimo = dados;
+          await mostrarPdfNoPreview(dados, seq);
+          $("#pv-modo").textContent = "prévia fiel (LibreOffice)";
+        } else {
+          const r = await fetch("/api/relatorio/docx", opts);
+          if (!r.ok) throw new Error((await r.json()).erro || "Erro ao montar o documento");
+          const blob = await r.blob();
+          if (seq !== previewSeq) return;
+          const destino = document.createElement("div");
+          await docx.renderAsync(blob, destino, null, { className: "docx", inWrapper: true, breakPages: true,
+            ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, renderFootnotes: true,
+            useBase64URL: true, experimental: true });
+          if (seq !== previewSeq) return;
+          trocarPreview(destino); ajustarZoom();
+          $("#pv-modo").textContent = "prévia aproximada — instale o LibreOffice para ficar igual ao Word";
+        }
         $("#pv-status").textContent = "";
         return;
       } catch (err) {
@@ -1134,7 +1213,7 @@ function renderPreview(imediato = false) {
         aviso = `Não deu para montar o documento: ${esc(err.message)} — mostrando prévia simples.`;
       }
     } else {
-      aviso = window.docx ? `O modelo “${esc(p.nome || "")}” não tem template — prévia simples. Envie o template no passo 3.` : "";
+      aviso = `O modelo “${esc(p.nome || "")}” não tem template — prévia simples. Envie o template no passo 3.`;
     }
     try {
       const r = await api("POST", "/api/markdown", { markdown: md, perfil: p.id });
@@ -1142,16 +1221,31 @@ function renderPreview(imediato = false) {
       $("#pv-style").textContent = r.css;
       pv.classList.remove("doc");
       pv.innerHTML = (aviso ? `<div class="pv-aviso">${aviso}</div>` : "") + r.html;
+      $("#pv-modo").textContent = "";
     } catch (err) { pv.innerHTML = `<div class="vazio">Não foi possível pré-visualizar: ${esc(err.message)}</div>`; }
-  }, imediato ? 0 : 700);
+  }, imediato ? 0 : (estadoPdf.disponivel ? 1000 : 700));
+}
+function trocarPreview(el) {
+  const pv = $("#preview"), pos = pv.scrollTop / Math.max(1, pv.scrollHeight - pv.clientHeight);
+  pv.classList.add("doc"); pv.replaceChildren(el);
+  pv.scrollTop = pos * (pv.scrollHeight - pv.clientHeight);
+}
+async function mostrarPdfNoPreview(dados, seq) {
+  const pv = $("#preview");
+  const el = await desenharPdf(dados, Math.max(200, pv.clientWidth - 40));
+  if (seq !== undefined && seq !== previewSeq) return;
+  trocarPreview(el);
 }
 function ajustarZoom() {
-  const pv = $("#preview"), w = pv.querySelector(".docx-wrapper"), pag = pv.querySelector("section.docx");
+  const pv = $("#preview");
+  if (pv.querySelector(".pdf-paginas") && estadoPdf.ultimo) { mostrarPdfNoPreview(estadoPdf.ultimo); return; }
+  const w = pv.querySelector(".docx-wrapper"), pag = pv.querySelector("section.docx");
   if (!w || !pag) return;
   w.style.zoom = 1;
   w.style.zoom = Math.min(1, (pv.clientWidth - 16) / (pag.offsetWidth + 24)).toFixed(3);
 }
-window.addEventListener("resize", ajustarZoom);
+let resizeT;
+window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(ajustarZoom, 200); });
 
 let salvarT, salvarPendente = null;
 function salvarRascunho() {
@@ -1386,24 +1480,104 @@ $("#p-projetos").onclick = (e) => {
 const fmtKB = (b) => (b / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " KB";
 const urlArquivo = (tipo, nome) => `/api/perfis/${estado.perfilSel}/${tipo}/${encodeURIComponent(nome)}`;
 
+const ROTULO_FMT = { docx: "Word", dotx: "Modelo Word", pdf: "PDF" };
 function renderArquivos(p) {
   $$("[data-modelo]").forEach((el) => {
     const tipo = el.dataset.modelo, multiplo = el.hasAttribute("data-multiplo");
     const lista = multiplo ? p.arquivos[tipo] : (p.arquivos[tipo] ? [p.arquivos[tipo]] : []);
-    el.querySelector(".drop").classList.toggle("enviado", lista.length > 0);
-    el.querySelector(".status").innerHTML = multiplo
-      ? `<div><b>Arraste os arquivos aqui</b></div><div class="small">ou clique para escolher · .docx, .dotx ou .pdf</div>`
-      : lista.length
-        ? `<div class="ok">✓ Template configurado</div><div class="small" style="margin-top:4px">Arraste ou clique para substituir</div>`
-        : `<div><b>Arraste o template aqui</b></div><div class="small">ou clique para escolher · .docx ou .dotx</div>`;
-    el.querySelector(".arquivos").innerHTML = lista.map((i) => `
-      <li><span class="nome">${esc(i.nome)}
-          <div class="muted small">${esc(i.enviado_em)} · ${fmtKB(i.tamanho)}</div></span>
-        <a class="btn sm" href="${urlArquivo(tipo, i.nome)}">Baixar</a>
-        <button class="btn sm danger" data-remover="${esc(i.nome)}">Remover</button></li>`).join("")
-      || (multiplo ? `<li class="muted small">Nenhuma referência enviada.</li>` : "");
+    const cont = el.querySelector(".count");
+    cont.textContent = multiplo ? `${lista.length} de 10` : (lista.length ? "1 arquivo" : "nenhum");
+    cont.classList.toggle("tem", lista.length > 0);
+    const drop = el.querySelector(".drop");
+    drop.classList.toggle("compacto", lista.length > 0);
+    drop.querySelector(".status").innerHTML = lista.length
+      ? `<div class="small"><b>${multiplo ? "+ Adicionar mais" : "Substituir template"}</b> — arraste aqui ou clique</div>`
+      : `<span class="icone">${multiplo ? "📚" : "📄"}</span><div><b>Arraste ${multiplo ? "os arquivos" : "o template"} aqui</b></div>
+         <div class="small">ou clique para escolher · ${multiplo ? ".docx, .dotx ou .pdf" : ".docx ou .dotx"}</div>`;
+    el.querySelector(".thumbs").innerHTML = lista.map((i) => `
+      <div class="thumb" data-nome="${esc(i.nome)}">
+        <div class="thumb-pg" data-ver title="Visualizar"><div class="icone-arq"><span>${i.formato.toUpperCase()}</span></div></div>
+        <div class="thumb-info"><b title="${esc(i.nome)}">${esc(i.nome)}</b>
+          <span>${ROTULO_FMT[i.formato] || i.formato} · ${fmtKB(i.tamanho)} · ${esc(i.enviado_em.split(" ")[0])}</span></div>
+        <div class="thumb-acoes">
+          <button class="btn" data-ver>Ver</button>
+          <a class="btn" href="${urlArquivo(tipo, i.nome)}">Baixar</a>
+          <button class="btn danger" data-remover="${esc(i.nome)}">✕</button>
+        </div>
+      </div>`).join("");
+    lista.forEach((i) => { miniatura(el.querySelector(`.thumb[data-nome="${CSS.escape(i.nome)}"] .thumb-pg`), tipo, i); });
   });
 }
+
+/* miniatura: desenha a 1ª página do próprio documento (cache por arquivo + data de envio) */
+const cacheBlobs = new Map();
+async function blobArquivo(tipo, i) {
+  const url = urlArquivo(tipo, i.nome), chave = url + "|" + i.enviado_em + "|" + i.tamanho;
+  if (!cacheBlobs.has(chave)) cacheBlobs.set(chave, fetch(url + "?inline=1").then((r) => r.blob()));
+  return cacheBlobs.get(chave);
+}
+async function pdfArquivo(tipo, i) {
+  const url = urlArquivo(tipo, i.nome) + (i.formato === "pdf" ? "?inline=1" : "?pdf=1");
+  const chave = "pdf|" + url + "|" + i.enviado_em + "|" + i.tamanho;
+  if (!cacheBlobs.has(chave)) cacheBlobs.set(chave, fetch(url).then(async (r) => {
+    if (!r.ok) throw new Error((await r.json()).erro || "Erro ao abrir");
+    return r.arrayBuffer();
+  }));
+  try { return await cacheBlobs.get(chave); } catch (e) { cacheBlobs.delete(chave); throw e; }
+}
+const usarPdf = (i) => window.pdfjsLib && (i.formato === "pdf" || estadoPdf.disponivel);
+async function miniatura(caixa, tipo, i) {
+  if (!caixa) return;
+  if (usarPdf(i)) {
+    try {
+      const el = await desenharPdf(await pdfArquivo(tipo, i), caixa.clientWidth, 1);
+      if (caixa.isConnected) caixa.replaceChildren(el);
+    } catch { /* fica o ícone do formato */ }
+    return;
+  }
+  if (!window.docx) return;
+  try {
+    const destino = document.createElement("div");
+    await docx.renderAsync(await blobArquivo(tipo, i), destino, null, { className: "docx", inWrapper: true, breakPages: true,
+      ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, useBase64URL: true });
+    const pag = destino.querySelector("section.docx");
+    if (!pag || !caixa.isConnected) return;
+    caixa.replaceChildren(destino);
+    destino.style.zoom = (caixa.clientWidth / pag.offsetWidth).toFixed(3);
+  } catch { /* fica o ícone do formato */ }
+}
+
+/* visualizador em tela cheia */
+async function abrirVisualizador(tipo, i) {
+  const corpo = $("#v-corpo"), url = urlArquivo(tipo, i.nome);
+  $("#v-nome").textContent = i.nome;
+  $("#v-info").textContent = `${ROTULO_FMT[i.formato] || i.formato} · ${fmtKB(i.tamanho)} · enviado em ${i.enviado_em}`;
+  $("#v-baixar").href = url;
+  $("#viewer").classList.remove("hidden");
+  corpo.innerHTML = `<div class="carregando">Abrindo o documento…${i.formato !== "pdf" && estadoPdf.disponivel ? " (convertendo com o LibreOffice)" : ""}</div>`;
+  if (usarPdf(i)) {
+    try {
+      const el = await desenharPdf(await pdfArquivo(tipo, i), Math.min(900, corpo.clientWidth - 48));
+      corpo.replaceChildren(el);
+      $("#v-info").textContent += ` · ${el.dataset.paginas} página(s)`;
+    } catch (err) { corpo.innerHTML = `<div class="carregando">Não foi possível visualizar: ${esc(err.message)}</div>`; }
+    return;
+  }
+  try {
+    const destino = document.createElement("div");
+    await docx.renderAsync(await blobArquivo(tipo, i), destino, null, { className: "docx", inWrapper: true, breakPages: true,
+      ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, renderFootnotes: true, useBase64URL: true, experimental: true });
+    corpo.replaceChildren(destino);
+    const pag = destino.querySelector("section.docx"), w = destino.querySelector(".docx-wrapper");
+    if (pag && w) w.style.zoom = Math.min(1, (corpo.clientWidth - 40) / pag.offsetWidth).toFixed(3);
+    const n = destino.querySelectorAll("section.docx").length;
+    $("#v-info").textContent += ` · ${n} página(s) aprox.`;
+  } catch (err) { corpo.innerHTML = `<div class="carregando">Não foi possível visualizar: ${esc(err.message)}</div>`; }
+}
+const fecharVisualizador = () => { $("#viewer").classList.add("hidden"); $("#v-corpo").replaceChildren(); };
+$("#v-fechar").onclick = fecharVisualizador;
+$("#viewer").onclick = (e) => { if (e.target.id === "viewer") fecharVisualizador(); };
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#viewer").classList.contains("hidden")) fecharVisualizador(); });
 
 async function enviarModelos(tipo, files) {
   $("#m-err").textContent = "";
@@ -1433,8 +1607,13 @@ $$("[data-modelo]").forEach((el) => {
   drop.ondragleave = () => drop.classList.remove("over");
   drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); enviar(e.dataTransfer.files); };
   input.onchange = () => { const f = [...input.files]; input.value = ""; enviar(f); };
-  el.querySelector(".arquivos").onclick = async (e) => {
-    const nome = e.target.dataset.remover;
+  el.querySelector(".thumbs").onclick = async (e) => {
+    const card = e.target.closest(".thumb");
+    if (!card) return;
+    const p = perfilSel(), lista = multiplo ? p.arquivos[tipo] : [p.arquivos[tipo]];
+    const info = lista.find((x) => x && x.nome === card.dataset.nome);
+    if (e.target.closest("[data-ver]")) return abrirVisualizador(tipo, info);
+    const nome = e.target.closest("[data-remover]")?.dataset.remover;
     if (!nome || !confirm(`Remover "${nome}"?`)) return;
     await api("DELETE", urlArquivo(tipo, nome));
     toast("Arquivo removido"); await carregarPerfis(); renderPerfis();
@@ -1534,10 +1713,10 @@ window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => e.preventDefault());
 
 /* ============================ versão ============================ */
-const VERSAO = "4";
+const VERSAO = "6";
 async function conferirVersao() {
   let v = null;
-  try { v = (await api("GET", "/api/versao")).versao; } catch {}
+  try { const r = await api("GET", "/api/versao"); v = r.versao; estadoPdf.disponivel = !!r.pdf; } catch {}
   if (v !== VERSAO) {
     const b = $("#banner-versao");
     b.innerHTML = `⚠ O servidor do app está numa versão antiga — algumas funções não vão responder. Reinicie o app:
@@ -1547,7 +1726,7 @@ async function conferirVersao() {
 }
 
 /* ============================ início ============================ */
-conferirVersao();
+const versaoPronta = conferirVersao();
 carregarSugestoes();
 carregarConfig();
 rota();

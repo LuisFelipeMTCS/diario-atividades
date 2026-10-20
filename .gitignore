@@ -10,3 +10,4 @@ modelos/referencia/*
 data/*.json
 data/rascunhos/
 modelos/perfis/
+data/cache/
