@@ -6,508 +6,1048 @@
 <title>Diário de Atividades</title>
 <style>
   :root {
-    --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #6b7385; --line: #e2e5eb;
-    --accent: #1f6feb; --accent-text: #fff; --danger: #c93c37; --chip: #eef2f9;
+    --bg: #f3f4f0; --surface: #ffffff; --surface-2: #eef0ea; --text: #16202a; --muted: #5d6974;
+    --line: #dde1d9; --accent: #0b6e74; --accent-soft: #d9eeee; --accent-text: #ffffff;
+    --danger: #c0392b; --danger-soft: #fbe7e4; --ok: #2f855a; --ok-soft: #e1f2e8; --warn: #a86b12; --warn-soft: #fbf0dc;
+    --shadow: 0 1px 2px rgba(16, 24, 32, .05), 0 4px 16px rgba(16, 24, 32, .04);
+    --radius: 14px; --side: 236px;
+    --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #14171c; --card: #1d2128; --text: #e6e8ec; --muted: #9aa2b1; --line: #2e333c;
-      --accent: #4c8dff; --accent-text: #fff; --danger: #ef6b66; --chip: #262c36;
+      --bg: #0e1316; --surface: #151c20; --surface-2: #1b2429; --text: #e5eaed; --muted: #8b99a2;
+      --line: #253036; --accent: #3cbfc1; --accent-soft: rgba(60, 191, 193, .13); --accent-text: #052526;
+      --danger: #f07167; --danger-soft: rgba(240, 113, 103, .12); --ok: #5cc489; --ok-soft: rgba(92, 196, 137, .12);
+      --warn: #e2b155; --warn-soft: rgba(226, 177, 85, .12);
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+      color-scheme: dark;
     }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  header { display: flex; align-items: center; gap: 24px; padding: 14px 24px;
-           background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-  header h1 { font-size: 17px; margin: 0; }
-  nav { display: flex; gap: 4px; }
-  nav button { background: none; border: 0; padding: 8px 14px; border-radius: 8px;
-               color: var(--muted); font: inherit; cursor: pointer; }
-  nav button.on { background: var(--chip); color: var(--text); font-weight: 600; }
-  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-          padding: 18px; margin-bottom: 18px; }
-  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
-  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-  input, textarea, select { font: inherit; color: var(--text); background: var(--bg);
-          border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
-  textarea { resize: vertical; min-height: 64px; width: 100%; }
-  .grow { flex: 1 1 200px; }
-  .btn { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text);
-         padding: 8px 14px; border-radius: 8px; cursor: pointer; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
-  .btn.small { padding: 3px 9px; font-size: 13px; }
-  .btn.danger { color: var(--danger); }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text);
+         font: 14.5px/1.5 Inter, "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  h1, h2, h3 { margin: 0; letter-spacing: -.01em; }
+  code { font-family: var(--mono); font-size: .9em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  .hidden { display: none !important; }
   .muted { color: var(--muted); }
-  .err { color: var(--danger); min-height: 1.2em; margin: 6px 0 0; font-size: 13px; }
-  .daybar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-  .daybar h2 { font-size: 16px; margin: 0 8px 0 0; text-transform: capitalize; }
-  .total { margin-left: auto; font-weight: 600; }
-  .item { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 12px 0;
-          border-top: 1px solid var(--line); }
-  .item:first-child { border-top: 0; }
-  .item .desc { white-space: pre-wrap; }
-  .item .meta { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
-  .chip { background: var(--chip); border-radius: 999px; padding: 1px 9px; }
-  .item .side { text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: end; }
-  .hours { font-weight: 600; font-variant-numeric: tabular-nums; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-size: 12px; color: var(--muted); font-weight: 600; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .report-day td { white-space: pre-wrap; }
-  .modelos { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+  .small { font-size: 12.5px; }
+
+  /* ---------- estrutura ---------- */
+  .app { display: grid; grid-template-columns: var(--side) 1fr; min-height: 100vh; }
+  aside { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 22px;
+          padding: 22px 14px; background: var(--surface); border-right: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
+  .brand .logo { width: 32px; height: 32px; border-radius: 9px; background: var(--accent); color: var(--accent-text);
+                 display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+  .brand b { display: block; font-size: 14.5px; }
+  .brand span { font-size: 12px; color: var(--muted); }
+  nav { display: flex; flex-direction: column; gap: 2px; }
+  nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; color: var(--muted);
+          text-decoration: none; font-weight: 500; }
+  nav a:hover { background: var(--surface-2); color: var(--text); }
+  nav a.on { background: var(--accent-soft); color: var(--accent); }
+  nav svg { width: 18px; height: 18px; flex: none; }
+  .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 12px; padding: 0 8px; }
+  .progress { font-size: 12.5px; }
+  .progress .bar { height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin: 6px 0 4px; }
+  .progress .bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .pill.on::before { background: var(--ok); }
+
+  main { min-width: 0; padding: 28px 32px 80px; }
+  .view { max-width: 1180px; margin: 0 auto; }
+  .page-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+  .page-head h1 { font-size: 22px; font-weight: 650; }
+  .page-head .sub { color: var(--muted); font-size: 13.5px; }
+  .page-head .spacer { flex: 1; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+          box-shadow: var(--shadow); padding: 20px; }
+  .card + .card { margin-top: 16px; }
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .card-head h2 { font-size: 15px; font-weight: 650; }
+  .card-head .spacer { flex: 1; }
+
+  /* ---------- controles ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--line);
+         background: var(--surface); padding: 8px 14px; border-radius: 9px; cursor: pointer; font-weight: 500;
+         white-space: nowrap; transition: background .12s, border-color .12s; }
+  .btn:hover { background: var(--surface-2); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.07); }
+  .btn.ghost { border-color: transparent; background: none; }
+  .btn.ghost:hover { background: var(--surface-2); }
+  .btn.sm { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+  .btn.icon { padding: 6px; width: 32px; height: 32px; }
+  .btn.danger { color: var(--danger); }
+  .btn.lg { padding: 11px 20px; font-size: 15px; }
+  .btn svg { width: 16px; height: 16px; }
+
+  label.f { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 500; min-width: 0; }
+  input, select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+                            padding: 8px 11px; width: 100%; min-width: 0; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  textarea { resize: vertical; }
+  .err { color: var(--danger); font-size: 13px; min-height: 1.2em; margin: 8px 0 0; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 99px; font-size: 12px;
+          background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .chip.proj { color: var(--text); }
+  .chip.proj::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--accent)); }
+  .chip.entrega { background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+  button.chip { border: 1px solid transparent; cursor: pointer; }
+  button.chip:hover { border-color: var(--line); color: var(--text); }
+
+  .toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-size: 13.5px; }
+  .toggle input { appearance: none; width: 34px; height: 20px; border-radius: 99px; background: var(--line); position: relative;
+                  padding: 0; border: 0; cursor: pointer; transition: background .15s; flex: none; }
+  .toggle input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%;
+                         background: #fff; transition: transform .15s; }
+  .toggle input:checked { background: var(--ok); }
+  .toggle input:checked::after { transform: translateX(14px); }
+
+  .seg { display: inline-flex; background: var(--surface-2); border-radius: 9px; padding: 3px; gap: 2px; }
+  .seg button { border: 0; background: none; padding: 5px 11px; border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500; }
+  .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+  .month-switch { display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--line);
+                  border-radius: 10px; padding: 3px; }
+  .month-switch b { min-width: 150px; text-align: center; font-weight: 600; font-size: 14px; }
+
+  /* ---------- HOJE ---------- */
+  .hoje-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+  .composer textarea.desc { min-height: 96px; font-size: 15px; border: 0; background: none; padding: 2px 0; box-shadow: none; }
+  .composer .fields { display: grid; grid-template-columns: 1.4fr 1.1fr .8fr .55fr; gap: 10px; margin-top: 12px;
+                      padding-top: 14px; border-top: 1px solid var(--line); }
+  .composer .recentes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  .composer .actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .composer .actions .spacer { flex: 1; }
+  .composer.editing { border-color: var(--accent); }
+  kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
+
+  .day-nav { display: inline-flex; align-items: center; gap: 4px; }
+  a.btn { color: inherit; text-decoration: none; }
+
+  .entries { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  .entry { position: relative; display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 14px; padding: 14px 14px 14px 0;
+           background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  .entry .stripe { border-radius: 0 4px 4px 0; background: var(--c, var(--accent)); }
+  .entry .desc { white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+  .entry.open .desc { -webkit-line-clamp: unset; display: block; }
+  .entry .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+  .entry .tools { display: flex; gap: 2px; opacity: .35; transition: opacity .12s; align-self: start; }
+  .entry:hover .tools, .entry:focus-within .tools { opacity: 1; }
+  .empty { padding: 34px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; }
+  .empty b { display: block; color: var(--text); margin-bottom: 4px; }
+
+  .cal-head { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }
+  .cal-head b { flex: 1; font-size: 14px; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal .dow { font-size: 11px; color: var(--muted); text-align: center; padding-bottom: 2px; font-weight: 600; }
+  .cal button { aspect-ratio: 1; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 12.5px;
+                font-variant-numeric: tabular-nums; position: relative; background: var(--surface-2); color: var(--text); padding: 0; }
+  .cal button:hover { border-color: var(--accent); }
+  .cal button.out { visibility: hidden; }
+  .cal button.weekend, .cal button.future { background: none; color: var(--muted); }
+  .cal button.l1 { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+  .cal button.l2 { background: color-mix(in srgb, var(--accent) 42%, var(--surface)); }
+  .cal button.l3 { background: color-mix(in srgb, var(--accent) 66%, var(--surface)); color: var(--accent-text); }
+  .cal button.falta { background: none; border: 1px dashed color-mix(in srgb, var(--danger) 60%, transparent); color: var(--danger); }
+  .cal button.today { font-weight: 700; }
+  .cal button.today::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: currentColor; }
+  .cal button.sel { outline: 2px solid var(--text); outline-offset: 1px; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: 11.5px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .stat.alert b { color: var(--danger); }
+  .faltas { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
+
+  /* ---------- RELATÓRIO ---------- */
+  .step { display: flex; align-items: center; gap: 10px; }
+  .step .n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700;
+             background: var(--accent-soft); color: var(--accent); flex: none; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .proj-group { border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+  .proj-group + .proj-group { margin-top: 8px; }
+  .proj-group summary { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; list-style: none; background: var(--surface-2); }
+  .proj-group summary::-webkit-details-marker { display: none; }
+  .proj-group summary::before { content: "›"; font-size: 18px; line-height: 1; color: var(--muted); transition: transform .15s; }
+  .proj-group[open] summary::before { transform: rotate(90deg); }
+  .proj-group summary b { flex: 1; }
+  .rows { width: 100%; border-collapse: collapse; }
+  .rows td { padding: 9px 14px; border-top: 1px solid var(--line); vertical-align: top; font-size: 13.5px; }
+  .rows td.d { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; width: 1%; }
+  .rows td.c { width: 1%; white-space: nowrap; }
+  .rows td.t .txt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+  .rows td.t .txt.open { -webkit-line-clamp: unset; display: block; }
+  .rows td.e { width: 1%; }
+
+  .ia-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+  .ia-bar textarea { min-height: 42px; height: 42px; }
+  .editor-bar { display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; flex-wrap: wrap; }
+  .editor-bar .spacer { flex: 1; }
+  .editor { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .editor.only-edit { grid-template-columns: 1fr; } .editor.only-edit .preview { display: none; }
+  .editor.only-prev { grid-template-columns: 1fr; } .editor.only-prev textarea { display: none; }
+  .editor textarea { min-height: 560px; height: 62vh; font: 13px/1.6 var(--mono); padding: 14px; }
+  .preview { height: 62vh; min-height: 560px; overflow: auto; border: 1px solid var(--line); border-radius: 9px;
+             background: #fff; color: #1d2a33; padding: 28px 34px; font-family: Calibri, Carlito, "Segoe UI", sans-serif; font-size: 14px; }
+  .preview h2 { color: #004254; font-size: 20px; margin: 22px 0 10px; }
+  .preview h3 { color: #004254; font-size: 16.5px; margin: 18px 0 8px; }
+  .preview h4 { color: #1f5f6e; font-size: 15px; margin: 14px 0 6px; }
+  .preview h5 { color: #1f5f6e; font-size: 14px; margin: 12px 0 6px; font-style: italic; }
+  .preview h2:first-child { margin-top: 0; }
+  .preview p { margin: 0 0 10px; text-align: justify; }
+  .preview ul { margin: 0 0 10px; padding-left: 22px; }
+  .preview li.l2 { margin-left: 22px; list-style: circle; }
+  .preview table { border-collapse: collapse; width: 100%; margin: 6px 0 14px; font-size: 13px; }
+  .preview th, .preview td { border-top: 1px solid #004254; padding: 6px 8px; text-align: left; }
+  .preview th { border-bottom: 1px solid #004254; }
+  .preview td:first-child { background: #e3e2da; font-weight: 600; }
+  .preview .vazio { color: #8a96a0; text-align: center; padding-top: 80px; }
+
+  .export { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
+  .checks li { display: flex; gap: 8px; align-items: center; }
+  .checks li::before { content: "✓"; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+                       font-size: 11px; font-weight: 700; background: var(--ok-soft); color: var(--ok); flex: none; }
+  .checks li.no::before { content: "!"; background: var(--warn-soft); color: var(--warn); }
+  .checks a { color: var(--accent); }
+  .export .buttons { display: flex; flex-direction: column; gap: 8px; min-width: 220px; }
+  .export .row { display: flex; gap: 8px; }
+  .export .row .btn { flex: 1; }
+
+  /* ---------- CONFIGURAÇÕES ---------- */
+  .capa-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; }
+  .capa-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start; }
+  .capa-form .full { grid-column: 1 / -1; }
+  .cover { aspect-ratio: 210 / 297; border-radius: 6px; background: #004254; color: #fff; padding: 22px 20px;
+           display: flex; flex-direction: column; font-family: Calibri, Carlito, "Segoe UI", sans-serif; box-shadow: var(--shadow); overflow: hidden; }
+  .cover .top { font-size: 10px; opacity: .8; line-height: 1.4; }
+  .cover .t1 { margin-top: auto; font-size: 19px; font-weight: 700; color: #6fd3cf; line-height: 1.15; }
+  .cover .t2 { font-size: 15px; font-weight: 600; line-height: 1.2; margin-top: 2px; white-space: pre-line; }
+  .cover .st { margin-top: 12px; font-size: 11px; opacity: .85; }
+  .cover .ft { margin-top: 26px; font-size: 9px; opacity: .6; }
+  .modelos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .modelos .card { margin: 0; display: flex; flex-direction: column; gap: 12px; }
-  .modelos h3 { font-size: 15px; margin: 0; }
-  .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 28px 16px; text-align: center;
-          cursor: pointer; color: var(--muted); transition: border-color .15s, background .15s; }
-  .drop:hover, .drop.over { border-color: var(--accent); background: var(--chip); color: var(--text); }
-  .drop .icone { font-size: 30px; display: block; margin-bottom: 6px; }
-  .drop.enviado { border-style: solid; border-color: #2f9e57; color: var(--text); }
-  .drop .ok { color: #2f9e57; font-weight: 600; }
+  .modelos h3 { font-size: 14.5px; }
+  .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer;
+          color: var(--muted); transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .drop .icone { font-size: 26px; display: block; margin-bottom: 4px; }
+  .drop.enviado { border-style: solid; border-color: color-mix(in srgb, var(--ok) 60%, transparent); }
+  .drop .ok { color: var(--ok); font-weight: 600; }
   .arquivos { list-style: none; margin: 0; padding: 0; }
   .arquivos li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
   .arquivos li:first-child { border-top: 0; }
-  .arquivos .nome { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
-  .ia textarea.md { min-height: 420px; font: 13px/1.5 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
-  .ia details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin: 4px 0 8px; }
-  .ia .capa { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 10px; }
-  .ia .capa textarea { min-height: 52px; }
-  .empty { padding: 24px 0; text-align: center; color: var(--muted); }
-  .hidden { display: none !important; }
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-           background: var(--text); color: var(--bg); padding: 8px 16px; border-radius: 8px;
-           opacity: 0; transition: opacity .2s; pointer-events: none; }
-  .toast.show { opacity: 1; }
+  .arquivos .nome { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13.5px; }
+  pre.snippet { background: var(--surface-2); border-radius: 9px; padding: 12px 14px; font: 12.5px/1.55 var(--mono); overflow: auto; margin: 8px 0 0; }
+
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text);
+           color: var(--bg); padding: 9px 16px; border-radius: 10px; opacity: 0; transition: opacity .2s, transform .2s;
+           pointer-events: none; z-index: 10; font-weight: 500; }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+
+  #print-report { display: none; }
+
+  @media (max-width: 1080px) {
+    .hoje-grid { grid-template-columns: 1fr; }
+    .hoje-grid > .col-side { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .hoje-grid > .col-side .card + .card { margin-top: 0; }
+    .editor { grid-template-columns: 1fr; } .editor .preview { display: none; }
+    .editor.only-prev .preview { display: block; }
+    .capa-grid { grid-template-columns: 1fr; } .cover { max-width: 260px; }
+  }
+  @media (max-width: 760px) {
+    .app { grid-template-columns: 1fr; }
+    aside { position: sticky; z-index: 5; height: auto; flex-direction: row; align-items: center; padding: 10px 16px; gap: 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .brand span, .side-foot { display: none; }
+    nav { flex-direction: row; } nav a span { display: none; }
+    main { padding: 20px 16px 64px; }
+    .composer .fields, .capa-form, .modelos, .hoje-grid > .col-side, .export, .ia-bar { grid-template-columns: 1fr; }
+  }
   @media print {
-    header, .no-print { display: none !important; }
     body { background: #fff; color: #000; }
-    main { padding: 0; max-width: none; }
-    .card { border: 0; padding: 0; }
+    .app > aside, .view { display: none !important; }
+    main { padding: 0; }
+    #print-report { display: block; font: 12px/1.45 Calibri, Carlito, sans-serif; }
+    #print-report h1 { font-size: 18px; margin-bottom: 4px; }
+    #print-report table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    #print-report th, #print-report td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #ccc; vertical-align: top; }
   }
 </style>
 </head>
 <body>
-<header>
-  <h1>📝 Diário de Atividades</h1>
-  <nav>
-    <button data-tab="dia" class="on">Dia</button>
-    <button data-tab="mes">Relatório do mês</button>
-    <button data-tab="modelos">Modelos</button>
-  </nav>
-</header>
-
-<main>
-  <!-- ============ ABA DIA ============ -->
-  <section id="tab-dia">
-    <form id="form" class="card" autocomplete="off">
-      <div class="row">
-        <label>Data <input type="date" id="f-data" required></label>
-        <label class="grow">Projeto / Cliente <input id="f-projeto" list="dl-projeto" placeholder="ex.: AIE Storage Manager"></label>
-        <label>Categoria <input id="f-categoria" list="dl-categoria" placeholder="ex.: Desenvolvimento"></label>
-        <label>Ticket / Card <input id="f-ticket" placeholder="ex.: #1234" size="10"></label>
-        <label>Horas <input id="f-horas" type="number" step="0.25" min="0" max="24" placeholder="1,5" style="width:80px"></label>
-      </div>
-      <label style="margin-top:12px">O que você fez?
-        <textarea id="f-descricao" required placeholder="Descreva a atividade... (Ctrl+Enter para salvar)"></textarea>
-      </label>
-      <div class="row" style="margin-top:12px">
-        <button class="btn primary" type="submit" id="btn-salvar">Adicionar</button>
-        <button class="btn hidden" type="button" id="btn-cancelar">Cancelar edição</button>
-      </div>
-      <p class="err" id="err"></p>
-    </form>
-
-    <div class="card">
-      <div class="daybar">
-        <button class="btn small" id="prev" title="Dia anterior">◀</button>
-        <button class="btn small" id="today">Hoje</button>
-        <button class="btn small" id="next" title="Próximo dia">▶</button>
-        <h2 id="day-title"></h2>
-        <span class="total" id="day-total"></span>
-      </div>
-      <div id="list"></div>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <div class="logo">D</div>
+      <div><b>Diário de Atividades</b><span>dia a dia → entrega do mês</span></div>
     </div>
-  </section>
-
-  <!-- ============ ABA MÊS ============ -->
-  <section id="tab-mes" class="hidden">
-    <div class="card no-print">
-      <div class="row">
-        <label>Mês <input type="month" id="m-mes"></label>
-        <label>Projeto <select id="m-projeto"><option value="">Todos</option></select></label>
-        <span class="grow"></span>
-        <button class="btn" id="m-copiar">Copiar texto</button>
-        <button class="btn" id="m-csv">Exportar Excel (CSV)</button>
-        <button class="btn primary" id="m-imprimir">Imprimir / PDF</button>
-      </div>
+    <nav>
+      <a href="#hoje" data-view="hoje">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        <span>Registro diário</span></a>
+      <a href="#relatorio" data-view="relatorio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+        <span>Relatório do mês</span></a>
+      <a href="#config" data-view="config">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+        <span>Capa e modelos</span></a>
+    </nav>
+    <div class="side-foot">
+      <div class="progress" id="side-progress"></div>
+      <span class="pill" id="side-ia">IA</span>
     </div>
-    <div class="card no-print ia">
-      <div class="row" style="align-items:center">
-        <h3 style="font-size:15px;margin:0">Relatório .docx no padrão da empresa</h3>
-        <span class="muted" id="ia-status" style="font-size:13px"></span>
-        <span class="grow"></span>
-        <button class="btn" id="ia-gerar">✨ Gerar texto com IA</button>
-        <button class="btn primary" id="ia-docx">Baixar .docx</button>
-      </div>
-      <details>
-        <summary>Dados da capa</summary>
-        <div class="capa">
-          <label>Título (1ª linha fica em destaque)<textarea id="c-titulo" rows="2"></textarea></label>
-          <label>Subtítulo — <code>{mes}</code> vira o mês<input id="c-subtitulo"></label>
-          <label>Autor – cargo<input id="c-autor"></label>
-          <label>Área<input id="c-area"></label>
-          <label>Versão<input id="c-versao" style="width:90px"></label>
+  </aside>
+
+  <main>
+    <!-- ======================= REGISTRO DIÁRIO ======================= -->
+    <section class="view" id="view-hoje">
+      <div class="page-head">
+        <div>
+          <h1 id="day-title">Hoje</h1>
+          <div class="sub" id="day-sub"></div>
         </div>
-        <button class="btn small" id="c-salvar">Salvar capa</button>
-      </details>
-      <label>Pedido para a IA (opcional)
-        <textarea id="ia-pedido" rows="2" placeholder="ex.: foque no projeto X; texto mais curto, até 3 páginas; destaque as entregas concluídas"></textarea>
-      </label>
-      <div style="margin-top:12px">
-        <div class="muted" style="font-size:12px;margin-bottom:4px">Texto do relatório (a IA escreve aqui; revise antes de baixar).
-          Formato: <code># Seção</code> · <code>## Subseção</code> · <code>- item</code> · <code>| a | b |</code> tabela · <code>**negrito**</code></div>
-        <textarea class="md" id="ia-md" placeholder="Clique em “Gerar texto com IA” para criar o rascunho a partir das atividades do mês e das referências."></textarea>
+        <span class="spacer"></span>
+        <div class="day-nav">
+          <button class="btn icon ghost" id="prev" title="Dia anterior (Alt+←)">‹</button>
+          <button class="btn sm" id="today">Hoje</button>
+          <button class="btn icon ghost" id="next" title="Próximo dia (Alt+→)">›</button>
+        </div>
       </div>
-      <p class="err" id="ia-err"></p>
-    </div>
-    <div class="card" id="report"></div>
-  </section>
 
-  <!-- ============ ABA MODELOS ============ -->
-  <section id="tab-modelos" class="hidden">
-    <div class="card">
-      <h2 style="font-size:16px;margin:0 0 4px">Modelos do relatório</h2>
-      <p class="muted" style="margin:0;font-size:13px">Arraste o arquivo para a área ou clique nela para escolher.
-        Os arquivos ficam só nesta máquina (pasta <code>modelos/</code>) e não vão para o GitHub.</p>
-    </div>
-    <div class="modelos">
-      <div class="card" data-modelo="padrao">
-        <div><h3>Padrão da empresa</h3>
-          <div class="muted" style="font-size:13px">Um arquivo só, com logo, cabeçalho, rodapé, fontes e cores. Pasta <code>modelos/padrao/</code>.</div></div>
-        <div class="drop" tabindex="0"><span class="icone">📄</span><div class="status"></div></div>
-        <input type="file" accept=".docx,.dotx,.pdf" class="hidden">
-        <ul class="arquivos"></ul>
-      </div>
-      <div class="card" data-modelo="referencia" data-multiplo>
-        <div><h3>Relatórios de referência</h3>
-          <div class="muted" style="font-size:13px">Até 10 relatórios prontos, do jeito que o cliente espera. Pasta <code>modelos/referencia/</code>.</div></div>
-        <div class="drop" tabindex="0"><span class="icone">📚</span><div class="status"></div></div>
-        <input type="file" accept=".docx,.dotx,.pdf" class="hidden" multiple>
-        <ul class="arquivos"></ul>
-      </div>
-    </div>
-    <p class="err" id="m-err"></p>
-  </section>
-</main>
+      <div class="hoje-grid">
+        <div class="col-main">
+          <form class="card composer" id="form" autocomplete="off">
+            <textarea class="desc" id="f-descricao" required
+              placeholder="O que você fez? Descreva o resultado, não só a tarefa — ex.: “Corrigido o tratamento de PDFs corrompidos no worker; agora vão direto ao dead-letter.”"></textarea>
+            <div class="fields">
+              <label class="f">Projeto / cliente<input id="f-projeto" list="dl-projeto" placeholder="aie-next-ai-worker"></label>
+              <label class="f">Categoria<input id="f-categoria" list="dl-categoria" placeholder="Desenvolvimento"></label>
+              <label class="f">Ticket / card<input id="f-ticket" placeholder="#1234"></label>
+              <label class="f">Horas<input id="f-horas" type="number" step="0.25" min="0" max="24" placeholder="opcional"></label>
+            </div>
+            <div class="recentes" id="recentes"></div>
+            <input type="hidden" id="f-data">
+            <div class="actions">
+              <label class="toggle" title="Marque o que foi entregue/concluído: a IA destaca no relatório">
+                <input type="checkbox" id="f-entregavel"> É uma entrega do mês</label>
+              <span class="spacer"></span>
+              <span class="muted small"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
+              <button class="btn ghost hidden" type="button" id="btn-cancelar">Cancelar</button>
+              <button class="btn primary" type="submit" id="btn-salvar">Registrar</button>
+            </div>
+            <p class="err" id="err"></p>
+          </form>
 
+          <div class="entries" id="list"></div>
+        </div>
+
+        <div class="col-side">
+          <div class="card">
+            <div class="cal-head">
+              <b id="cal-title"></b>
+              <button class="btn icon ghost" id="cal-prev" title="Mês anterior">‹</button>
+              <button class="btn icon ghost" id="cal-next" title="Próximo mês">›</button>
+            </div>
+            <div class="cal" id="cal"></div>
+            <div class="legend">
+              <span><i style="background:color-mix(in srgb,var(--accent) 42%,var(--surface))"></i>com registro</span>
+              <span><i style="border:1px dashed var(--danger)"></i>dia útil sem registro</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2 id="mes-title">Este mês</h2><span class="spacer"></span>
+              <a class="btn sm" href="#relatorio">Relatório →</a></div>
+            <div class="stats" id="mes-stats"></div>
+            <div class="faltas" id="mes-faltas"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= RELATÓRIO ======================= -->
+    <section class="view hidden" id="view-relatorio">
+      <div class="page-head">
+        <div>
+          <h1>Relatório do mês</h1>
+          <div class="sub">Revise as atividades, gere o texto e baixe o .docx no padrão da empresa.</div>
+        </div>
+        <span class="spacer"></span>
+        <div class="month-switch">
+          <button class="btn icon ghost" id="r-prev" title="Mês anterior">‹</button>
+          <b id="r-mes-nome"></b>
+          <button class="btn icon ghost" id="r-next" title="Próximo mês">›</button>
+        </div>
+        <select id="r-projeto" style="width:auto;min-width:170px"><option value="">Todos os projetos</option></select>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="step"><span class="n">1</span><h2>Atividades do mês</h2></div>
+          <span class="spacer"></span>
+          <span class="muted small">Ligue <b>Entrega</b> no que foi concluído: a IA dá destaque.</span>
+        </div>
+        <div class="kpis" id="r-kpis"></div>
+        <div id="r-grupos"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="step"><span class="n">2</span><h2>Texto do relatório</h2></div>
+          <span class="spacer"></span>
+          <span class="muted small" id="ia-status"></span>
+        </div>
+        <div class="ia-bar">
+          <label class="f">Orientação para a IA (opcional)
+            <textarea id="ia-pedido" rows="1" placeholder="ex.: resumo executivo no início; destaque as entregas; até 4 páginas"></textarea></label>
+          <button class="btn primary" id="ia-gerar">✨ Gerar com IA</button>
+        </div>
+        <div class="editor-bar">
+          <div class="seg" id="ed-modo">
+            <button data-modo="split" class="on">Lado a lado</button>
+            <button data-modo="edit">Editar</button>
+            <button data-modo="prev">Visualizar</button>
+          </div>
+          <span class="muted small">Formato: <code># Seção</code> <code>## Subseção</code> <code>- item</code> <code>| a | b |</code> <code>**negrito**</code></span>
+          <span class="spacer"></span>
+          <span class="muted small" id="ed-info"></span>
+        </div>
+        <div class="editor" id="editor">
+          <textarea id="ia-md" spellcheck="true"
+            placeholder="Clique em “Gerar com IA” para criar o rascunho a partir das atividades do mês e dos relatórios de referência — ou escreva aqui."></textarea>
+          <div class="preview" id="preview"></div>
+        </div>
+        <p class="err" id="ia-err"></p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div class="step"><span class="n">3</span><h2>Entregar</h2></div></div>
+        <div class="export">
+          <div>
+            <ul class="checks" id="checks"></ul>
+            <div class="muted small" id="capa-resumo" style="margin-top:12px"></div>
+          </div>
+          <div class="buttons">
+            <button class="btn primary lg" id="ia-docx">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+              Baixar .docx</button>
+            <div class="row">
+              <button class="btn sm" id="m-copiar" title="Copia a lista de atividades em texto">Copiar lista</button>
+              <button class="btn sm" id="m-csv">Excel (CSV)</button>
+              <button class="btn sm" id="m-imprimir" title="Imprime a lista de atividades">Imprimir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= CONFIGURAÇÕES ======================= -->
+    <section class="view hidden" id="view-config">
+      <div class="page-head">
+        <div>
+          <h1>Capa e modelos</h1>
+          <div class="sub">O que não muda de um mês para o outro. Configure uma vez.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Capa do relatório</h2><span class="spacer"></span>
+          <button class="btn primary sm" id="c-salvar">Salvar capa</button></div>
+        <div class="capa-grid">
+          <div class="capa-form">
+            <label class="f full">Título — a 1ª linha fica em destaque<textarea id="c-titulo" rows="3"></textarea></label>
+            <label class="f full"><span>Subtítulo · <code>{mes}</code> vira o nome do mês</span><input id="c-subtitulo"></label>
+            <label class="f">Autor – cargo<input id="c-autor"></label>
+            <label class="f">Área<input id="c-area"></label>
+            <label class="f">Versão<input id="c-versao"></label>
+          </div>
+          <div class="cover" id="cover"></div>
+        </div>
+      </div>
+
+      <div class="modelos" style="margin-top:16px">
+        <div class="card" data-modelo="padrao">
+          <div><h3>Padrão da empresa (.docx)</h3>
+            <div class="muted small">Um arquivo só: logo, cabeçalho, rodapé, fontes e cores. A IA nunca mexe na formatação.</div></div>
+          <div class="drop" tabindex="0"><span class="icone">📄</span><div class="status"></div></div>
+          <input type="file" accept=".docx,.dotx,.pdf" class="hidden">
+          <ul class="arquivos"></ul>
+        </div>
+        <div class="card" data-modelo="referencia" data-multiplo>
+          <div><h3>Relatórios de referência</h3>
+            <div class="muted small">Até 10 relatórios prontos, do jeito que o cliente espera. A IA copia a estrutura e o tom.</div></div>
+          <div class="drop" tabindex="0"><span class="icone">📚</span><div class="status"></div></div>
+          <input type="file" accept=".docx,.dotx,.pdf" class="hidden" multiple>
+          <ul class="arquivos"></ul>
+        </div>
+      </div>
+      <p class="err" id="m-err"></p>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-head"><h2>Registro pelo Claude</h2></div>
+        <p class="muted small" style="margin:0">A skill <b>registrar-atividade</b> do Claude Code envia as atividades para este app.
+          Também dá para lançar por qualquer script — aceita um objeto ou uma lista:</p>
+        <pre class="snippet">curl -s -X POST http://127.0.0.1:8765/api/atividades \
+  -H 'Content-Type: application/json' \
+  -d '[{"data":"2026-10-20","projeto":"aie-next-ai-worker","categoria":"Desenvolvimento",
+        "ticket":"#359195","descricao":"…","entregavel":true}]'</pre>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="print-report"></div>
 <datalist id="dl-projeto"></datalist>
 <datalist id="dl-categoria"></datalist>
 <div class="toast" id="toast"></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
 const pad = (n) => String(n).padStart(2, "0");
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const parseIso = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const parseIso = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d || 1); };
 const fmtH = (h) => (Math.round(h * 100) / 100).toLocaleString("pt-BR") + "h";
 const fmtDate = (s) => s.split("-").reverse().join("/");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const cap = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+const nomeMes = (mes) => cap(parseIso(mes + "-01").toLocaleDateString("pt-BR", { month: "long", year: "numeric" }));
+const somaMes = (mes, delta) => { const d = parseIso(mes + "-01"); d.setMonth(d.getMonth() + delta); return iso(d).slice(0, 7); };
+const hoje = () => iso(new Date());
+const cor = (txt) => { let h = 0; for (const c of String(txt)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 55% 52%)`; };
+const CAMPOS = ["data", "projeto", "categoria", "ticket", "descricao", "horas", "entregavel"];
 
-let dia = iso(new Date());
-let editando = null;
-let itensDia = [];
-let itensMes = [];
+const estado = { dia: hoje(), calMes: hoje().slice(0, 7), relMes: hoje().slice(0, 7), editando: null, cfg: null, modelos: null };
+const cacheMes = {};
 
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 1800);
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 1900);
 }
 
 async function api(method, url, body) {
   const r = await fetch(url, { method, headers: { "Content-Type": "application/json" },
-                               body: body ? JSON.stringify(body) : undefined });
+                               body: body !== undefined ? JSON.stringify(body) : undefined });
   const data = await r.json();
   if (!r.ok) throw new Error(data.erro || "Erro");
   return data;
 }
 
-/* ---------------- abas ---------------- */
-document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
-  document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("on", x === b));
-  for (const t of ["dia", "mes", "modelos"]) $("#tab-" + t).classList.toggle("hidden", b.dataset.tab !== t);
-  if (b.dataset.tab === "mes") { carregarMes(); carregarIA(); }
-  else if (b.dataset.tab === "modelos") carregarModelos();
-  else carregarDia();
-});
+async function atividadesDoMes(mes, forcar = false) {
+  if (forcar || !cacheMes[mes]) cacheMes[mes] = await api("GET", "/api/atividades?mes=" + mes);
+  return cacheMes[mes];
+}
+const invalidar = (...datas) => datas.filter(Boolean).forEach((d) => delete cacheMes[d.slice(0, 7)]);
 
-/* ---------------- sugestões ---------------- */
-async function carregarSugestoes() {
-  const s = await api("GET", "/api/sugestoes");
-  for (const f of ["projeto", "categoria"])
-    $("#dl-" + f).innerHTML = s[f].map((v) => `<option value="${esc(v)}">`).join("");
+/** Dias úteis (seg–sex) do mês até hoje que não têm nenhum registro. */
+function diasSemRegistro(mes, itens) {
+  const com = new Set(itens.map((i) => i.data));
+  const out = [], d = parseIso(mes + "-01"), limite = hoje();
+  while (iso(d).slice(0, 7) === mes && iso(d) <= limite) {
+    const w = d.getDay();
+    if (w !== 0 && w !== 6 && !com.has(iso(d))) out.push(iso(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+function diasUteisAteHoje(mes) {
+  let n = 0; const d = parseIso(mes + "-01"), limite = hoje();
+  while (iso(d).slice(0, 7) === mes && iso(d) <= limite) { if (d.getDay() % 6) n++; d.setDate(d.getDate() + 1); }
+  return n;
 }
 
-/* ---------------- dia ---------------- */
+/* ============================ navegação ============================ */
+const VIEWS = ["hoje", "relatorio", "config"];
+function rota() {
+  const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "hoje";
+  for (const x of VIEWS) $("#view-" + x).classList.toggle("hidden", x !== v);
+  $$("nav a").forEach((a) => a.classList.toggle("on", a.dataset.view === v));
+  if (v === "hoje") carregarDia();
+  if (v === "relatorio") carregarRelatorio();
+  if (v === "config") { carregarCapa(); carregarModelos(); }
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", rota);
+
+async function atualizarLateral() {
+  const mes = hoje().slice(0, 7);
+  const itens = await atividadesDoMes(mes);
+  const uteis = diasUteisAteHoje(mes), faltam = diasSemRegistro(mes, itens).length;
+  const feitos = uteis - faltam;
+  $("#side-progress").innerHTML = `<b>${esc(cap(parseIso(mes + "-01").toLocaleDateString("pt-BR", { month: "long" })))}</b>
+    <div class="bar"><i style="width:${uteis ? Math.round(100 * feitos / uteis) : 0}%"></i></div>
+    <span class="muted">${feitos} de ${uteis} dias úteis registrados</span>`;
+}
+
+/* ============================ sugestões ============================ */
+let sugestoes = { projeto: [], categoria: [] };
+async function carregarSugestoes() {
+  sugestoes = await api("GET", "/api/sugestoes");
+  for (const f of ["projeto", "categoria"])
+    $("#dl-" + f).innerHTML = sugestoes[f].map((v) => `<option value="${esc(v)}">`).join("");
+  $("#recentes").innerHTML = sugestoes.projeto.length
+    ? `<span class="muted small">Recentes:</span>` + sugestoes.projeto.slice(0, 5).map((p) =>
+        `<button type="button" class="chip proj" style="--c:${cor(p)}" data-proj="${esc(p)}">${esc(p)}</button>`).join("")
+    : "";
+}
+$("#recentes").onclick = (e) => {
+  const p = e.target.closest("[data-proj]");
+  if (p) { $("#f-projeto").value = p.dataset.proj; $("#f-categoria").focus(); }
+};
+
+/* ============================ registro diário ============================ */
+let itensDia = [];
+
 async function carregarDia() {
-  itensDia = await api("GET", "/api/atividades?data=" + dia);
-  const d = parseIso(dia);
-  const hoje = dia === iso(new Date());
-  $("#day-title").textContent = (hoje ? "Hoje — " : "") +
-    d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  const d = parseIso(estado.dia), ehHoje = estado.dia === hoje();
+  $("#day-title").textContent = ehHoje ? "Hoje" : cap(d.toLocaleDateString("pt-BR", { weekday: "long" }));
+  $("#day-sub").textContent = cap(d.toLocaleDateString("pt-BR", { weekday: ehHoje ? "long" : undefined, day: "numeric", month: "long", year: "numeric" }));
+  if (!estado.editando) $("#f-data").value = estado.dia;
+  const itensMes = await atividadesDoMes(estado.dia.slice(0, 7));
+  itensDia = itensMes.filter((i) => i.data === estado.dia);
+  renderLista();
+  if (estado.calMes !== estado.dia.slice(0, 7)) estado.calMes = estado.dia.slice(0, 7);
+  renderCalendario();
+  atualizarLateral();
+}
+
+function renderLista() {
   const total = itensDia.reduce((a, i) => a + i.horas, 0);
-  $("#day-total").textContent = itensDia.length ? `${itensDia.length} atividade(s) · ${fmtH(total)}` : "";
-  $("#list").innerHTML = itensDia.length ? itensDia.map((i) => `
-    <div class="item">
+  if (!itensDia.length) {
+    const fds = [0, 6].includes(parseIso(estado.dia).getDay());
+    $("#list").innerHTML = `<div class="empty"><b>Nada registrado neste dia${fds ? " (fim de semana)" : ""}.</b>
+      Escreva acima ou peça ao Claude: “registra o que eu fiz hoje”.</div>`;
+    return;
+  }
+  $("#list").innerHTML = `<div class="muted small" style="margin:4px 2px -2px">${itensDia.length} atividade(s)${total ? " · " + fmtH(total) : ""}</div>` +
+    itensDia.map((i) => `
+    <article class="entry" style="--c:${cor(i.projeto || "-")}" data-id="${i.id}">
+      <div class="stripe"></div>
       <div>
-        <div class="desc">${esc(i.descricao)}</div>
-        <div class="meta muted">
-          ${i.projeto ? `<span class="chip">${esc(i.projeto)}</span>` : ""}
+        <div class="desc" title="Clique para expandir">${esc(i.descricao)}</div>
+        <div class="meta">
+          ${i.entregavel ? `<span class="chip entrega">✓ Entrega</span>` : ""}
+          ${i.projeto ? `<span class="chip proj">${esc(i.projeto)}</span>` : ""}
           ${i.categoria ? `<span class="chip">${esc(i.categoria)}</span>` : ""}
           ${i.ticket ? `<span class="chip">${esc(i.ticket)}</span>` : ""}
+          ${i.horas ? `<span class="chip">${fmtH(i.horas)}</span>` : ""}
         </div>
       </div>
-      <div class="side">
-        <span class="hours">${i.horas ? fmtH(i.horas) : ""}</span>
-        <span>
-          <button class="btn small" data-edit="${i.id}">Editar</button>
-          <button class="btn small danger" data-del="${i.id}">Excluir</button>
-        </span>
+      <div class="tools">
+        <button class="btn icon ghost" data-acao="editar" title="Editar">✎</button>
+        <button class="btn icon ghost danger" data-acao="excluir" title="Excluir">🗑</button>
       </div>
-    </div>`).join("") : `<div class="empty">Nada registrado neste dia ainda.</div>`;
-  if (!editando) $("#f-data").value = dia;
+    </article>`).join("");
 }
 
 $("#list").onclick = async (e) => {
-  const ed = e.target.dataset.edit, del = e.target.dataset.del;
-  if (ed) {
-    const i = itensDia.find((x) => x.id == ed);
-    editando = i.id;
-    for (const f of ["data", "projeto", "categoria", "ticket", "descricao", "horas"]) $("#f-" + f).value = i[f] || "";
+  const art = e.target.closest(".entry");
+  if (!art) return;
+  const item = itensDia.find((x) => x.id == art.dataset.id);
+  const acao = e.target.closest("[data-acao]")?.dataset.acao;
+  if (!acao) { if (e.target.closest(".desc")) art.classList.toggle("open"); return; }
+  if (acao === "editar") {
+    estado.editando = item.id;
+    for (const f of CAMPOS) {
+      const el = $("#f-" + f);
+      if (el.type === "checkbox") el.checked = !!item[f]; else el.value = item[f] || "";
+    }
+    $("#form").classList.add("editing");
     $("#btn-salvar").textContent = "Salvar alterações";
     $("#btn-cancelar").classList.remove("hidden");
     $("#f-descricao").focus();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
-  if (del && confirm("Excluir esta atividade?")) {
-    await api("DELETE", "/api/atividades/" + del);
-    if (editando == del) limparForm();
+  if (acao === "excluir" && confirm("Excluir esta atividade?")) {
+    await api("DELETE", "/api/atividades/" + item.id);
+    if (estado.editando == item.id) limparForm();
+    invalidar(item.data);
     toast("Atividade excluída");
     carregarDia();
   }
 };
 
 function limparForm(manterContexto = false) {
-  editando = null;
-  $("#btn-salvar").textContent = "Adicionar";
+  estado.editando = null;
+  $("#form").classList.remove("editing");
+  $("#btn-salvar").textContent = "Registrar";
   $("#btn-cancelar").classList.add("hidden");
-  $("#f-descricao").value = ""; $("#f-horas").value = ""; $("#f-ticket").value = "";
+  for (const f of ["descricao", "horas", "ticket"]) $("#f-" + f).value = "";
+  $("#f-entregavel").checked = false;
   if (!manterContexto) { $("#f-projeto").value = ""; $("#f-categoria").value = ""; }
-  $("#f-data").value = dia;
+  $("#f-data").value = estado.dia;
   $("#err").textContent = "";
 }
-
 $("#btn-cancelar").onclick = () => limparForm(true);
 
 $("#form").onsubmit = async (e) => {
   e.preventDefault();
   const body = {};
-  for (const f of ["data", "projeto", "categoria", "ticket", "descricao", "horas"]) body[f] = $("#f-" + f).value;
+  for (const f of CAMPOS) { const el = $("#f-" + f); body[f] = el.type === "checkbox" ? el.checked : el.value; }
+  const antes = estado.editando ? itensDia.find((x) => x.id == estado.editando)?.data : null;
   try {
-    if (editando) await api("PUT", "/api/atividades/" + editando, body);
+    if (estado.editando) await api("PUT", "/api/atividades/" + estado.editando, body);
     else await api("POST", "/api/atividades", body);
-    toast(editando ? "Alterações salvas" : "Atividade registrada");
-    dia = body.data;
+    toast(estado.editando ? "Alterações salvas" : "Atividade registrada");
+    invalidar(body.data, antes);
+    estado.dia = body.data;
     limparForm(true);   // mantém projeto/categoria para lançar a próxima mais rápido
     carregarDia(); carregarSugestoes();
     $("#f-descricao").focus();
   } catch (err) { $("#err").textContent = err.message; }
 };
-
 $("#f-descricao").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("#form").requestSubmit();
 });
+const autoAltura = (el, min) => { el.style.height = "auto"; el.style.height = Math.max(min, el.scrollHeight) + "px"; };
+$("#f-descricao").addEventListener("input", (e) => autoAltura(e.target, 96));
 
-const mudaDia = (delta) => { const d = parseIso(dia); d.setDate(d.getDate() + delta); dia = iso(d); carregarDia(); };
+const irPara = (data) => { estado.dia = data; if (!estado.editando) limparForm(true); carregarDia(); };
+const mudaDia = (delta) => { const d = parseIso(estado.dia); d.setDate(d.getDate() + delta); irPara(iso(d)); };
 $("#prev").onclick = () => mudaDia(-1);
 $("#next").onclick = () => mudaDia(1);
-$("#today").onclick = () => { dia = iso(new Date()); carregarDia(); };
+$("#today").onclick = () => irPara(hoje());
+document.addEventListener("keydown", (e) => {
+  if (!e.altKey || $("#view-hoje").classList.contains("hidden")) return;
+  if (e.key === "ArrowLeft") { e.preventDefault(); mudaDia(-1); }
+  if (e.key === "ArrowRight") { e.preventDefault(); mudaDia(1); }
+});
 
-/* ---------------- mês ---------------- */
-$("#m-mes").value = dia.slice(0, 7);
-
-async function carregarMes() {
-  const mes = $("#m-mes").value;
-  if (!mes) return;
-  itensMes = await api("GET", "/api/atividades?mes=" + mes);
-  const projetos = [...new Set(itensMes.map((i) => i.projeto).filter(Boolean))].sort();
-  const sel = $("#m-projeto"), atual = sel.value;
-  sel.innerHTML = `<option value="">Todos</option>` + projetos.map((p) => `<option>${esc(p)}</option>`).join("");
-  sel.value = projetos.includes(atual) ? atual : "";
-  renderMes();
-}
-
-function filtrados() {
-  const p = $("#m-projeto").value;
-  return p ? itensMes.filter((i) => i.projeto === p) : itensMes;
-}
-
-function nomeMes() {
-  const [y, m] = $("#m-mes").value.split("-").map(Number);
-  const s = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-  return s[0].toUpperCase() + s.slice(1);
-}
-
-function renderMes() {
-  const itens = filtrados();
-  const total = itens.reduce((a, i) => a + i.horas, 0);
-  const porProjeto = {};
-  for (const i of itens) porProjeto[i.projeto || "(sem projeto)"] = (porProjeto[i.projeto || "(sem projeto)"] || 0) + i.horas;
-  const dias = new Set(itens.map((i) => i.data)).size;
-  const proj = $("#m-projeto").value;
-
-  if (!itens.length) { $("#report").innerHTML = `<div class="empty">Nenhuma atividade registrada em ${nomeMes()}.</div>`; return; }
-
-  $("#report").innerHTML = `
-    <h2 style="margin:0 0 4px">Relatório de atividades — ${esc(nomeMes())}</h2>
-    <p class="muted" style="margin:0 0 16px">${proj ? "Projeto: " + esc(proj) + " · " : ""}
-      ${itens.length} atividades · ${dias} dias trabalhados · <b>${fmtH(total)}</b> no total</p>
-
-    <h3 style="font-size:14px;margin:16px 0 6px">Resumo por projeto</h3>
-    <table>
-      <tr><th>Projeto</th><th class="num">Horas</th></tr>
-      ${Object.entries(porProjeto).sort((a, b) => b[1] - a[1]).map(([p, h]) =>
-        `<tr><td>${esc(p)}</td><td class="num">${fmtH(h)}</td></tr>`).join("")}
-      <tr><td><b>Total</b></td><td class="num"><b>${fmtH(total)}</b></td></tr>
-    </table>
-
-    <h3 style="font-size:14px;margin:22px 0 6px">Detalhamento</h3>
-    <table class="report-day">
-      <tr><th>Data</th><th>Projeto</th><th>Atividade</th><th class="num">Horas</th></tr>
-      ${itens.map((i) => `<tr>
-        <td class="num" style="text-align:left">${fmtDate(i.data)}</td>
-        <td>${esc(i.projeto)}${i.categoria ? `<div class="muted" style="font-size:12px">${esc(i.categoria)}</div>` : ""}</td>
-        <td>${esc(i.descricao)}${i.ticket ? ` <span class="muted">(${esc(i.ticket)})</span>` : ""}</td>
-        <td class="num">${i.horas ? fmtH(i.horas) : ""}</td></tr>`).join("")}
-    </table>`;
-}
-
-function textoMes() {
-  const itens = filtrados();
-  const total = itens.reduce((a, i) => a + i.horas, 0);
-  let out = `Relatório de atividades — ${nomeMes()}\n`;
-  if ($("#m-projeto").value) out += `Projeto: ${$("#m-projeto").value}\n`;
-  out += `Total: ${fmtH(total)}\n`;
-  let ultimo = "";
-  for (const i of itens) {
-    if (i.data !== ultimo) { out += `\n${fmtDate(i.data)}\n`; ultimo = i.data; }
-    out += `- ${i.projeto ? "[" + i.projeto + "] " : ""}${i.descricao.replace(/\n/g, " ")}` +
-           `${i.ticket ? " (" + i.ticket + ")" : ""}${i.horas ? " — " + fmtH(i.horas) : ""}\n`;
+/* ---------- calendário e números do mês ---------- */
+async function renderCalendario() {
+  const mes = estado.calMes, itens = await atividadesDoMes(mes);
+  const porDia = {};
+  for (const i of itens) porDia[i.data] = (porDia[i.data] || 0) + 1;
+  const faltas = new Set(diasSemRegistro(mes, itens));
+  $("#cal-title").textContent = nomeMes(mes);
+  const primeiro = parseIso(mes + "-01"), offset = (primeiro.getDay() + 6) % 7;  // semana começa na segunda
+  const nDias = new Date(primeiro.getFullYear(), primeiro.getMonth() + 1, 0).getDate();
+  let html = ["S", "T", "Q", "Q", "S", "S", "D"].map((d) => `<div class="dow">${d}</div>`).join("");
+  html += `<button class="out" tabindex="-1"></button>`.repeat(offset);
+  for (let n = 1; n <= nDias; n++) {
+    const data = `${mes}-${pad(n)}`, w = parseIso(data).getDay(), c = porDia[data] || 0;
+    const cls = [c >= 4 ? "l3" : c >= 2 ? "l2" : c ? "l1" : "", faltas.has(data) ? "falta" : "",
+                 !c && (w === 0 || w === 6) ? "weekend" : "", !c && data > hoje() ? "future" : "", data === hoje() ? "today" : "",
+                 data === estado.dia ? "sel" : ""].join(" ");
+    html += `<button class="${cls}" data-dia="${data}" title="${fmtDate(data)}${c ? ` · ${c} atividade(s)` : ""}">${n}</button>`;
   }
-  return out;
+  $("#cal").innerHTML = html;
+
+  const entregas = itens.filter((i) => i.entregavel).length;
+  const projetos = new Set(itens.map((i) => i.projeto).filter(Boolean)).size;
+  $("#mes-title").textContent = nomeMes(mes);
+  $("#mes-stats").innerHTML = `
+    <div class="stat"><b>${itens.length}</b><span>atividades</span></div>
+    <div class="stat"><b>${Object.keys(porDia).length}</b><span>dias com registro</span></div>
+    <div class="stat"><b>${projetos}</b><span>projetos</span></div>
+    <div class="stat${faltas.size ? " alert" : ""}"><b>${faltas.size}</b><span>dias úteis sem registro</span></div>
+    <div class="stat" style="grid-column:1/-1"><b>${entregas}</b><span>entregas marcadas para o relatório</span></div>`;
+  $("#mes-faltas").innerHTML = faltas.size
+    ? [...faltas].map((d) => `<button class="chip" data-dia="${d}" title="Ir para o dia">${fmtDate(d).slice(0, 5)}</button>`).join("")
+    : "";
+}
+$("#cal").onclick = $("#mes-faltas").onclick = (e) => { const b = e.target.closest("[data-dia]"); if (b) irPara(b.dataset.dia); };
+$("#cal-prev").onclick = () => { estado.calMes = somaMes(estado.calMes, -1); renderCalendario(); };
+$("#cal-next").onclick = () => { estado.calMes = somaMes(estado.calMes, 1); renderCalendario(); };
+
+/* ============================ relatório ============================ */
+let itensRel = [];
+const filtroProjeto = () => $("#r-projeto").value;
+const filtrados = () => filtroProjeto() ? itensRel.filter((i) => i.projeto === filtroProjeto()) : itensRel;
+const chaveRascunho = () => ({ mes: estado.relMes, projeto: filtroProjeto() });
+
+async function carregarRelatorio() {
+  $("#r-mes-nome").textContent = nomeMes(estado.relMes);
+  itensRel = await atividadesDoMes(estado.relMes, true);
+  const projetos = [...new Set(itensRel.map((i) => i.projeto).filter(Boolean))].sort();
+  const sel = $("#r-projeto"), atual = sel.value;
+  sel.innerHTML = `<option value="">Todos os projetos</option>` + projetos.map((p) => `<option>${esc(p)}</option>`).join("");
+  sel.value = projetos.includes(atual) ? atual : "";
+  renderAtividades();
+  if (!estado.cfg) await carregarConfig();
+  await carregarRascunho();
 }
 
-$("#m-mes").onchange = () => { carregarMes(); carregarRascunho(); };
-$("#m-projeto").onchange = () => { renderMes(); carregarRascunho(); };
-$("#m-imprimir").onclick = () => window.print();
-$("#m-csv").onclick = () => { location.href = "/api/exportar.csv?mes=" + $("#m-mes").value +
-  "&projeto=" + encodeURIComponent($("#m-projeto").value); };
-$("#m-copiar").onclick = async () => {
-  try { await navigator.clipboard.writeText(textoMes()); toast("Texto copiado"); }
-  catch { prompt("Copie o texto abaixo:", textoMes()); }
+function renderAtividades() {
+  const itens = filtrados();
+  const total = itens.reduce((a, i) => a + i.horas, 0);
+  const dias = new Set(itens.map((i) => i.data)).size;
+  const entregas = itens.filter((i) => i.entregavel).length;
+  const grupos = {};
+  for (const i of itens) (grupos[i.projeto || "(sem projeto)"] ||= []).push(i);
+  $("#r-kpis").innerHTML = `
+    <div class="stat"><b>${itens.length}</b><span>atividades</span></div>
+    <div class="stat"><b>${dias}</b><span>dias trabalhados</span></div>
+    <div class="stat"><b>${Object.keys(grupos).length}</b><span>projetos</span></div>
+    <div class="stat"><b>${entregas}</b><span>entregas marcadas</span></div>
+    ${total ? `<div class="stat"><b>${fmtH(total)}</b><span>horas lançadas</span></div>` : ""}`;
+  $("#r-grupos").innerHTML = itens.length ? Object.entries(grupos).sort((a, b) => b[1].length - a[1].length).map(([p, lista]) => `
+    <details class="proj-group">
+      <summary><span class="chip proj" style="--c:${cor(p)}"></span><b>${esc(p)}</b>
+        <span class="muted small">${lista.length} atividade(s)${lista.some((i) => i.entregavel) ? ` · ${lista.filter((i) => i.entregavel).length} entrega(s)` : ""}</span></summary>
+      <table class="rows">${lista.map((i) => `
+        <tr><td class="d">${fmtDate(i.data).slice(0, 5)}</td>
+          <td class="c">${i.categoria ? `<span class="chip">${esc(i.categoria)}</span>` : ""}</td>
+          <td class="t"><div class="txt" title="Clique para expandir">${esc(i.descricao)}</div></td>
+          <td class="e"><label class="toggle" title="Marcar como entrega"><input type="checkbox" data-entrega="${i.id}" ${i.entregavel ? "checked" : ""}></label></td></tr>`).join("")}
+      </table>
+    </details>`).join("")
+    : `<div class="empty"><b>Nenhuma atividade em ${esc(nomeMes(estado.relMes))}.</b>Registre o dia a dia na aba Registro diário.</div>`;
+  renderImpressao();
+  renderChecks();
+}
+
+$("#r-grupos").onclick = (e) => { const t = e.target.closest(".txt"); if (t) t.classList.toggle("open"); };
+$("#r-grupos").onchange = async (e) => {
+  const id = e.target.dataset.entrega;
+  if (!id) return;
+  const item = itensRel.find((x) => x.id == id);
+  try {
+    const novo = await api("PUT", "/api/atividades/" + id, { ...item, entregavel: e.target.checked });
+    Object.assign(item, novo);
+    renderAtividades();
+    // mantém o grupo aberto depois de redesenhar
+    $$("#r-grupos details").forEach((d) => { if (d.querySelector(`[data-entrega="${id}"]`)) d.open = true; });
+    toast(item.entregavel ? "Marcada como entrega" : "Desmarcada");
+  } catch (err) { e.target.checked = !e.target.checked; toast(err.message); }
 };
 
-/* ---------------- relatório .docx com IA ---------------- */
-const CAPA = ["titulo", "subtitulo", "autor", "area", "versao"];
-const chaveRascunho = () => ({ mes: $("#m-mes").value, projeto: $("#m-projeto").value });
+function mudaMesRel(delta) { estado.relMes = somaMes(estado.relMes, delta); carregarRelatorio(); }
+$("#r-prev").onclick = () => mudaMesRel(-1);
+$("#r-next").onclick = () => mudaMesRel(1);
+$("#r-projeto").onchange = () => { renderAtividades(); carregarRascunho(); };
 
-async function carregarIA() {
-  const cfg = await api("GET", "/api/relatorio/config");
-  for (const c of CAPA) $("#c-" + c).value = cfg[c] || "";
-  $("#ia-status").textContent = cfg.ia ? `IA: ${cfg.modelo}` : "IA desligada: configure OPENAI_API_KEY no .env";
-  $("#ia-gerar").disabled = !cfg.ia;
-  carregarRascunho();
+/* ---------- texto + preview ---------- */
+async function carregarConfig() {
+  estado.cfg = await api("GET", "/api/relatorio/config");
+  const ia = estado.cfg.ia;
+  $("#ia-status").textContent = ia ? `IA: ${estado.cfg.modelo}` : "IA desligada — configure OPENAI_API_KEY no .env";
+  $("#ia-gerar").disabled = !ia;
+  $("#side-ia").textContent = ia ? `IA ativa · ${estado.cfg.modelo}` : "IA desligada";
+  $("#side-ia").classList.toggle("on", !!ia);
 }
 
 async function carregarRascunho() {
   const { mes, projeto } = chaveRascunho();
-  if (!mes) return;
   const r = await api("GET", `/api/relatorio/rascunho?mes=${mes}&projeto=${encodeURIComponent(projeto)}`);
   $("#ia-md").value = r.markdown;
   $("#ia-err").textContent = "";
+  $("#ed-info").textContent = r.markdown ? "Rascunho carregado" : "";
+  renderPreview();
 }
 
-let salvarRascunhoT;
+/** Mesmo Markdown simples que o relatorio.py entende. */
+function mdBlocos(md) {
+  const blocos = []; let par = [], tab = [];
+  const fechaPar = () => { if (par.length) { blocos.push(["p", par.join(" ")]); par = []; } };
+  const fechaTab = () => { if (tab.length) { blocos.push(["tabela", tab]); tab = []; } };
+  for (const linha of md.replace(/\r\n/g, "\n").split("\n")) {
+    const s = linha.trim();
+    if (s.startsWith("|")) {
+      fechaPar();
+      const cels = s.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      if (!cels.filter(Boolean).every((c) => /^:?-{2,}:?$/.test(c))) tab.push(cels);
+      continue;
+    }
+    fechaTab();
+    const h = s.match(/^(#{1,4})\s+(.*)/), li = linha.trimEnd().match(/^( *)(?:[-*•]|\d+[.)])\s+(.*)/);
+    if (!s) fechaPar();
+    else if (h) { fechaPar(); blocos.push(["h", h[1].length, h[2].replace(/^[\d.]+\s+/, "")]); }
+    else if (li) { fechaPar(); blocos.push(["li", li[1].length >= 2 ? 2 : 1, li[2]]); }
+    else par.push(s);
+  }
+  fechaPar(); fechaTab();
+  return blocos;
+}
+const inline = (t) => esc(t).replace(/`/g, "").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\*([^*]+)\*/g, "<i>$1</i>");
+
+function renderPreview() {
+  const md = $("#ia-md").value;
+  const palavras = (md.match(/\S+/g) || []).length;
+  if (!md.trim()) { $("#preview").innerHTML = `<div class="vazio">A pré-visualização aparece aqui.</div>`; renderChecks(); return; }
+  const cont = [0, 0, 0, 0]; let html = "", lista = false;
+  for (const b of mdBlocos(md)) {
+    if (b[0] !== "li" && lista) { html += "</ul>"; lista = false; }
+    if (b[0] === "h") {
+      const n = b[1]; cont[n - 1]++; cont.fill(0, n);
+      html += `<h${n + 1}>${cont.slice(0, n).join(".")}. ${inline(b[2])}</h${n + 1}>`;
+    } else if (b[0] === "p") html += `<p>${inline(b[1])}</p>`;
+    else if (b[0] === "li") { if (!lista) { html += "<ul>"; lista = true; } html += `<li class="l${b[1]}">${inline(b[2])}</li>`; }
+    else if (b[0] === "tabela") {
+      const [cab, ...linhas] = b[1];
+      html += `<table><tr>${cab.map((c) => `<th>${inline(c)}</th>`).join("")}</tr>` +
+        linhas.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("") + "</table>";
+    }
+  }
+  if (lista) html += "</ul>";
+  $("#preview").innerHTML = html;
+  $("#ed-info").dataset.palavras = palavras;
+  renderChecks();
+}
+
+let salvarT;
 $("#ia-md").oninput = () => {
-  clearTimeout(salvarRascunhoT);
-  salvarRascunhoT = setTimeout(() => api("PUT", "/api/relatorio/rascunho",
-    { ...chaveRascunho(), markdown: $("#ia-md").value }).catch(() => {}), 600);
+  renderPreview();
+  $("#ed-info").textContent = "Salvando…";
+  clearTimeout(salvarT);
+  salvarT = setTimeout(() => api("PUT", "/api/relatorio/rascunho", { ...chaveRascunho(), markdown: $("#ia-md").value })
+    .then(() => { $("#ed-info").textContent = `Salvo às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${$("#ed-info").dataset.palavras || 0} palavras`; })
+    .catch(() => { $("#ed-info").textContent = "Não foi possível salvar o rascunho"; }), 600);
 };
 
-$("#c-salvar").onclick = async () => {
-  const body = {};
-  for (const c of CAPA) body[c] = $("#c-" + c).value;
-  try { await api("PUT", "/api/relatorio/config", body); toast("Capa salva"); }
-  catch (err) { $("#ia-err").textContent = err.message; }
+$("#ed-modo").onclick = (e) => {
+  const b = e.target.closest("[data-modo]");
+  if (!b) return;
+  $$("#ed-modo button").forEach((x) => x.classList.toggle("on", x === b));
+  $("#editor").className = "editor" + (b.dataset.modo === "edit" ? " only-edit" : b.dataset.modo === "prev" ? " only-prev" : "");
+  try { localStorage.setItem("diario.modoEditor", b.dataset.modo); } catch {}
 };
+try { const m = localStorage.getItem("diario.modoEditor"); if (m) $(`#ed-modo [data-modo="${m}"]`)?.click(); } catch {}
+
+// rolagem sincronizada editor -> preview (aproximada, por proporção)
+$("#ia-md").addEventListener("scroll", (e) => {
+  const t = e.target, p = $("#preview");
+  p.scrollTop = (t.scrollTop / Math.max(1, t.scrollHeight - t.clientHeight)) * (p.scrollHeight - p.clientHeight);
+});
 
 $("#ia-gerar").onclick = async () => {
+  if (!filtrados().length) { $("#ia-err").textContent = "Não há atividades nesse mês para resumir."; return; }
   if ($("#ia-md").value.trim() && !confirm("Substituir o texto atual por um novo rascunho da IA?")) return;
   const btn = $("#ia-gerar"), txt = btn.textContent;
-  btn.disabled = true; btn.textContent = "Gerando… (pode levar 1–2 min)";
+  btn.disabled = true; btn.textContent = "Gerando… (1–2 min)";
   $("#ia-err").textContent = "";
   try {
     const r = await api("POST", "/api/relatorio/rascunho", { ...chaveRascunho(), pedido: $("#ia-pedido").value });
-    $("#ia-md").value = r.markdown; toast("Rascunho gerado — revise o texto");
+    $("#ia-md").value = r.markdown; renderPreview();
+    $("#ed-info").textContent = "Rascunho gerado — revise antes de baixar";
+    toast("Rascunho gerado");
   } catch (err) { $("#ia-err").textContent = err.message; }
   finally { btn.disabled = false; btn.textContent = txt; }
 };
 
+/* ---------- entrega ---------- */
+async function renderChecks() {
+  if (!estado.modelos) { try { estado.modelos = await api("GET", "/api/modelos"); } catch { estado.modelos = {}; } }
+  const cfg = estado.cfg || {}, md = $("#ia-md").value;
+  const padrao = estado.modelos.padrao && /\.(docx|dotx)$/i.test(estado.modelos.padrao.nome);
+  const capaOk = cfg.titulo && cfg.autor;
+  const temSecao = /^#\s+\S/m.test(md);
+  const semEntrega = filtrados().length && !filtrados().some((i) => i.entregavel);
+  $("#checks").innerHTML = [
+    [padrao, padrao ? "Padrão da empresa enviado" : `Envie o padrão .docx em <a href="#config">Capa e modelos</a>`],
+    [capaOk, capaOk ? "Capa preenchida" : `Preencha a capa em <a href="#config">Capa e modelos</a>`],
+    [temSecao, temSecao ? "Texto com seções" : "O texto precisa de ao menos uma seção (<code># Título</code>)"],
+    [!semEntrega, semEntrega ? "Nenhuma atividade marcada como entrega (opcional, ajuda a IA)" : "Entregas marcadas"],
+  ].map(([ok, t]) => `<li class="${ok ? "" : "no"}">${t}</li>`).join("");
+  const sub = (cfg.subtitulo || "").replace("{mes}", nomeMes(estado.relMes));
+  $("#capa-resumo").innerHTML = cfg.titulo
+    ? `Capa: <b>${esc(cfg.titulo.split("\n")[0])}</b> · ${esc(sub)} · v${esc(cfg.versao || "1.0")} — <a href="#config" style="color:var(--accent)">editar</a>` : "";
+}
+
 $("#ia-docx").onclick = async () => {
   $("#ia-err").textContent = "";
-  if (!$("#ia-md").value.trim()) { $("#ia-err").textContent = "Gere ou escreva o texto do relatório primeiro."; return; }
+  if (!$("#ia-md").value.trim()) { $("#ia-err").textContent = "Gere ou escreva o texto do relatório primeiro."; $("#ia-md").focus(); return; }
+  const btn = $("#ia-docx"); btn.disabled = true;
   try {
     const r = await fetch("/api/relatorio/docx", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...chaveRascunho(), markdown: $("#ia-md").value }) });
     if (!r.ok) throw new Error((await r.json()).erro || "Erro ao gerar o .docx");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(await r.blob());
-    const proj = $("#m-projeto").value;
-    a.download = `Relatório de Atividades - ${nomeMes()}${proj ? " - " + proj : ""}.docx`;
-    a.click(); URL.revokeObjectURL(a.href);
-  } catch (err) { $("#ia-err").textContent = err.message; }
+    const proj = filtroProjeto();
+    a.download = `Relatório de Atividades - ${nomeMes(estado.relMes)}${proj ? " - " + proj : ""}.docx`;
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast("Relatório baixado");
+  } catch (err) { $("#ia-err").textContent = err.message; toast(err.message); }
+  finally { btn.disabled = false; }
 };
 
-/* ---------------- modelos .docx ---------------- */
-const fmtKB = (b) => (b / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " KB";
+function textoMes() {
+  const itens = filtrados();
+  let out = `Relatório de atividades — ${nomeMes(estado.relMes)}\n`;
+  if (filtroProjeto()) out += `Projeto: ${filtroProjeto()}\n`;
+  let ultimo = "";
+  for (const i of itens) {
+    if (i.data !== ultimo) { out += `\n${fmtDate(i.data)}\n`; ultimo = i.data; }
+    out += `- ${i.entregavel ? "[ENTREGA] " : ""}${i.projeto ? "[" + i.projeto + "] " : ""}${i.descricao.replace(/\n/g, " ")}` +
+           `${i.ticket ? " (" + i.ticket + ")" : ""}${i.horas ? " — " + fmtH(i.horas) : ""}\n`;
+  }
+  return out;
+}
+function renderImpressao() {
+  const itens = filtrados();
+  $("#print-report").innerHTML = `<h1>Relatório de atividades — ${esc(nomeMes(estado.relMes))}</h1>
+    <div>${filtroProjeto() ? "Projeto: " + esc(filtroProjeto()) + " · " : ""}${itens.length} atividades</div>
+    <table><tr><th>Data</th><th>Projeto</th><th>Atividade</th></tr>${itens.map((i) => `
+      <tr><td>${fmtDate(i.data)}</td><td>${esc(i.projeto)}<br><small>${esc(i.categoria)}</small></td>
+      <td>${i.entregavel ? "<b>[Entrega]</b> " : ""}${esc(i.descricao)}${i.ticket ? ` (${esc(i.ticket)})` : ""}</td></tr>`).join("")}</table>`;
+}
+$("#m-imprimir").onclick = () => window.print();
+$("#m-csv").onclick = () => { location.href = `/api/exportar.csv?mes=${estado.relMes}&projeto=${encodeURIComponent(filtroProjeto())}`; };
+$("#m-copiar").onclick = async () => {
+  try { await navigator.clipboard.writeText(textoMes()); toast("Lista copiada"); }
+  catch { prompt("Copie o texto abaixo:", textoMes()); }
+};
 
+/* ============================ capa e modelos ============================ */
+const CAPA = ["titulo", "subtitulo", "autor", "area", "versao"];
+async function carregarCapa() {
+  await carregarConfig();
+  for (const c of CAPA) $("#c-" + c).value = estado.cfg[c] || "";
+  renderCover();
+}
+function renderCover() {
+  const [t1, ...resto] = $("#c-titulo").value.split("\n");
+  const sub = $("#c-subtitulo").value.replace("{mes}", nomeMes(hoje().slice(0, 7)));
+  $("#cover").innerHTML = `<div class="top">${esc($("#c-autor").value)}<br>${esc($("#c-area").value)}</div>
+    <div class="t1">${esc(t1 || "Título")}</div><div class="t2">${esc(resto.join("\n"))}</div>
+    <div class="st">${esc(sub)}</div><div class="ft">${esc(sub)} – Versão ${esc($("#c-versao").value || "1.0")}</div>`;
+}
+CAPA.forEach((c) => $("#c-" + c).addEventListener("input", renderCover));
+$("#c-salvar").onclick = async () => {
+  const body = {};
+  for (const c of CAPA) body[c] = $("#c-" + c).value;
+  try { await api("PUT", "/api/relatorio/config", body); estado.cfg = { ...estado.cfg, ...body }; toast("Capa salva"); }
+  catch (err) { $("#m-err").textContent = err.message; }
+};
+
+const fmtKB = (b) => (b / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " KB";
 const urlModelo = (tipo, nome) => `/api/modelos/${tipo}/${encodeURIComponent(nome)}`;
 
 async function carregarModelos() {
-  const m = await api("GET", "/api/modelos");
-  document.querySelectorAll("[data-modelo]").forEach((el) => {
+  const m = estado.modelos = await api("GET", "/api/modelos");
+  $$("[data-modelo]").forEach((el) => {
     const tipo = el.dataset.modelo, multiplo = el.hasAttribute("data-multiplo");
     const lista = multiplo ? m[tipo] : (m[tipo] ? [m[tipo]] : []);
     el.querySelector(".drop").classList.toggle("enviado", lista.length > 0);
     el.querySelector(".status").innerHTML = multiplo
-      ? `<div><b>Arraste os arquivos aqui</b></div><div style="font-size:13px">ou clique para escolher (pode selecionar vários) · .docx, .dotx ou .pdf</div>`
+      ? `<div><b>Arraste os arquivos aqui</b></div><div class="small">ou clique para escolher · .docx, .dotx ou .pdf</div>`
       : lista.length
-        ? `<div class="ok">✔ Arquivo enviado</div><div style="font-size:13px;margin-top:6px">Arraste ou clique para substituir</div>`
-        : `<div><b>Arraste o arquivo aqui</b></div><div style="font-size:13px">ou clique para escolher · .docx, .dotx ou .pdf</div>`;
+        ? `<div class="ok">✓ Padrão configurado</div><div class="small" style="margin-top:4px">Arraste ou clique para substituir</div>`
+        : `<div><b>Arraste o arquivo aqui</b></div><div class="small">ou clique para escolher · .docx ou .dotx</div>`;
     el.querySelector(".arquivos").innerHTML = lista.map((i) => `
       <li><span class="nome">${esc(i.nome)}
-          <div class="muted" style="font-size:12px">${esc(i.enviado_em)} · ${fmtKB(i.tamanho)}</div></span>
-        <a class="btn small" href="${urlModelo(tipo, i.nome)}">Baixar</a>
-        <button class="btn small danger" data-remover="${esc(i.nome)}">Remover</button></li>`).join("")
-      || (multiplo ? `<li class="muted" style="font-size:13px">Nenhuma referência enviada.</li>` : "");
+          <div class="muted small">${esc(i.enviado_em)} · ${fmtKB(i.tamanho)}</div></span>
+        <a class="btn sm" href="${urlModelo(tipo, i.nome)}">Baixar</a>
+        <button class="btn sm danger" data-remover="${esc(i.nome)}">Remover</button></li>`).join("")
+      || (multiplo ? `<li class="muted small">Nenhuma referência enviada.</li>` : "");
   });
 }
 
 async function enviarModelos(tipo, files) {
   $("#m-err").textContent = "";
-  const erros = [];
-  let ok = 0;
+  const erros = []; let ok = 0;
   for (const file of files) {
     if (!/\.(docx|dotx|pdf)$/i.test(file.name)) { erros.push(`${file.name}: envie .docx, .dotx ou .pdf.`); continue; }
     try {
@@ -523,7 +1063,7 @@ async function enviarModelos(tipo, files) {
   carregarModelos();
 }
 
-document.querySelectorAll("[data-modelo]").forEach((el) => {
+$$("[data-modelo]").forEach((el) => {
   const tipo = el.dataset.modelo, multiplo = el.hasAttribute("data-multiplo");
   const input = el.querySelector("input[type=file]"), drop = el.querySelector(".drop");
   const enviar = (files) => enviarModelos(tipo, multiplo ? [...files] : [...files].slice(0, 1));
@@ -540,15 +1080,15 @@ document.querySelectorAll("[data-modelo]").forEach((el) => {
     toast("Arquivo removido"); carregarModelos();
   };
 });
-
 // soltar o arquivo fora da área não deve abrir o .docx no navegador
 window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => e.preventDefault());
 
-/* ---------------- início ---------------- */
+/* ============================ início ============================ */
 carregarSugestoes();
-carregarDia();
-$("#f-descricao").focus();
+carregarConfig();
+rota();
+if (!location.hash || location.hash === "#hoje") $("#f-descricao").focus();
 </script>
 </body>
 </html>

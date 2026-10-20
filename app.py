@@ -36,7 +36,7 @@ relatorio.carregar_env(os.path.join(BASE_DIR, ".env"))
 HOST = os.environ.get("DIARIO_HOST", "127.0.0.1")
 PORT = int(os.environ.get("DIARIO_PORT", "8765"))
 
-FIELDS = ("data", "projeto", "categoria", "ticket", "descricao", "horas")
+FIELDS = ("data", "projeto", "categoria", "ticket", "descricao", "horas", "entregavel")
 
 
 def db():
@@ -61,6 +61,9 @@ def init_db():
             )"""
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_atividades_data ON atividades(data)")
+        colunas = {r[1] for r in conn.execute("PRAGMA table_info(atividades)")}
+        if "entregavel" not in colunas:  # migração: marca de entrega para o relatório do mês
+            conn.execute("ALTER TABLE atividades ADD COLUMN entregavel INTEGER NOT NULL DEFAULT 0")
 
 
 def clean(payload):
@@ -80,6 +83,7 @@ def clean(payload):
         raise ValueError("Horas inválidas.")
     if item["horas"] < 0 or item["horas"] > 24:
         raise ValueError("Horas devem estar entre 0 e 24.")
+    item["entregavel"] = 1 if str(payload.get("entregavel") or "").lower() in ("1", "true", "sim", "on") else 0
     return item
 
 
@@ -342,7 +346,7 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/api/exportar.csv":
                 mes = qs.get("mes", "")
                 ini, fim = month_range(mes)
-                sql = ("SELECT data, projeto, categoria, ticket, descricao, horas "
+                sql = ("SELECT data, projeto, categoria, ticket, descricao, horas, entregavel "
                        "FROM atividades WHERE data BETWEEN ? AND ?")
                 params = [ini, fim]
                 if qs.get("projeto"):
@@ -352,11 +356,11 @@ class Handler(BaseHTTPRequestHandler):
                     rows = conn.execute(sql + " ORDER BY data, id", params).fetchall()
                 buf = io.StringIO()
                 w = csv.writer(buf, delimiter=";")
-                w.writerow(["Data", "Projeto", "Categoria", "Ticket", "Descrição", "Horas"])
+                w.writerow(["Data", "Projeto", "Categoria", "Ticket", "Descrição", "Horas", "Entrega"])
                 for r in rows:
                     d = "/".join(reversed(r["data"].split("-")))
                     w.writerow([d, r["projeto"], r["categoria"], r["ticket"], r["descricao"],
-                                str(r["horas"]).replace(".", ",")])
+                                str(r["horas"]).replace(".", ","), "Sim" if r["entregavel"] else ""])
                 # BOM para o Excel abrir com acentos corretos
                 return self.send(
                     200, "﻿" + buf.getvalue(), "text/csv; charset=utf-8",
@@ -386,16 +390,20 @@ class Handler(BaseHTTPRequestHandler):
         if path != "/api/atividades":
             return self.send(404, {"erro": "não encontrado"})
         try:
-            item = clean(self.read_json())
-        except (ValueError, json.JSONDecodeError) as e:
+            payload = self.read_json()
+            lote = isinstance(payload, list)  # a skill do Claude pode mandar várias de uma vez
+            itens = [clean(p) for p in (payload if lote else [payload])]
+            if not itens:
+                raise ValueError("Nenhuma atividade enviada.")
+        except (ValueError, json.JSONDecodeError, AttributeError) as e:
             return self.send(400, {"erro": str(e)})
         with db() as conn:
-            cur = conn.execute(
+            ids = [conn.execute(
                 f"INSERT INTO atividades ({', '.join(FIELDS)}) VALUES ({', '.join('?' * len(FIELDS))})",
                 [item[f] for f in FIELDS],
-            )
-            row = conn.execute("SELECT * FROM atividades WHERE id = ?", (cur.lastrowid,)).fetchone()
-        return self.send(201, dict(row))
+            ).lastrowid for item in itens]
+            rows = [dict(conn.execute("SELECT * FROM atividades WHERE id = ?", (i,)).fetchone()) for i in ids]
+        return self.send(201, rows if lote else rows[0])
 
     def do_PUT(self):
         path = urlparse(self.path).path

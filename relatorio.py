@@ -163,6 +163,8 @@ Regras:
   Quando houver mais de uma referência, o que se repete entre elas é a estrutura esperada.
 - Use SOMENTE os fatos das atividades do mês. Não invente números, nomes, datas, entregas ou resultados.
   Pode agrupar, reorganizar e contextualizar as atividades em texto corrido.
+- Atividades marcadas com (ENTREGA) são entregas concluídas no mês: dê destaque a elas
+  (por exemplo, numa seção ou tabela de entregas, se as referências tiverem algo parecido).
 - Não cite horas trabalhadas, IDs de tickets nem as datas de cada lançamento, a menos que sejam relevantes ao texto.
 - Não escreva capa, sumário/índice, nome do autor nem título geral do documento: comece direto pela primeira seção.
 - Responda apenas com o conteúdo, neste Markdown simples (nada além disto):
@@ -179,7 +181,8 @@ def descrever_atividades(atividades):
     for a in atividades:
         d = "/".join(reversed(a["data"].split("-")))
         extra = ", ".join(x for x in (a.get("projeto"), a.get("categoria"), a.get("ticket")) if x)
-        linhas.append(f"- {d}{' [' + extra + ']' if extra else ''}: {a['descricao'].strip()}")
+        entrega = " (ENTREGA)" if a.get("entregavel") else ""
+        linhas.append(f"- {d}{' [' + extra + ']' if extra else ''}{entrega}: {a['descricao'].strip()}")
     return "\n".join(linhas)
 
 

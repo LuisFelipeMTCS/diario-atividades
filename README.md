@@ -25,3 +25,15 @@ systemctl --user restart diario-atividades    # reiniciar (após alterar o códi
 systemctl --user disable --now diario-atividades  # desligar
 journalctl --user -u diario-atividades        # logs
 ```
+
+## Registro pelo Claude Code
+
+A skill `claude-skill/registrar-atividade` transforma "o que eu fiz hoje" (ou os commits do dia) em lançamentos
+e envia para `POST /api/atividades` (aceita um objeto ou uma lista). Para instalar:
+
+```bash
+mkdir -p ~/.claude/skills && ln -s "$PWD/claude-skill/registrar-atividade" ~/.claude/skills/registrar-atividade
+```
+
+Depois, no Claude Code: "registra o que eu fiz hoje".
+Marque como **entrega** o que foi concluído: a IA destaca essas atividades no relatório do mês.
