@@ -216,7 +216,7 @@ def chamar_openai(instrucoes, conteudo):
     return re.sub(r"^```\w*\n(.*?)\n```$", r"\1", texto, flags=re.S).strip()
 
 
-def gerar_rascunho(atividades, mes, projeto, referencias):
+def gerar_rascunho(atividades, mes, projeto, referencias, pedido=""):
     """referencias: lista de caminhos (.docx/.dotx/.pdf). Devolve o relatório em Markdown."""
     if not atividades:
         raise RuntimeError("Não há atividades registradas nesse mês.")
@@ -238,6 +238,9 @@ def gerar_rascunho(atividades, mes, projeto, referencias):
         alvo += f", somente sobre o projeto {projeto}"
     conteudo.append({"type": "input_text",
                      "text": f"{alvo}. Atividades registradas no mês:\n\n{descrever_atividades(atividades)}"})
+    if pedido.strip():
+        conteudo.append({"type": "input_text", "text": "Orientações adicionais de quem pediu o relatório "
+                         "(siga, desde que não contrariem as regras):\n" + pedido.strip()})
     return chamar_openai(INSTRUCOES, conteudo)
 
 

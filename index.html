@@ -162,10 +162,14 @@
         </div>
         <button class="btn small" id="c-salvar">Salvar capa</button>
       </details>
-      <label>Texto do relatório — revise antes de baixar
-        (<code>#</code> seção, <code>##</code> subseção, <code>-</code> lista, <code>| a | b |</code> tabela, <code>**negrito**</code>)
-        <textarea class="md" id="ia-md" placeholder="Clique em “Gerar texto com IA” para criar o rascunho a partir das atividades do mês e das referências."></textarea>
+      <label>Pedido para a IA (opcional)
+        <textarea id="ia-pedido" rows="2" placeholder="ex.: foque no projeto X; texto mais curto, até 3 páginas; destaque as entregas concluídas"></textarea>
       </label>
+      <div style="margin-top:12px">
+        <div class="muted" style="font-size:12px;margin-bottom:4px">Texto do relatório (a IA escreve aqui; revise antes de baixar).
+          Formato: <code># Seção</code> · <code>## Subseção</code> · <code>- item</code> · <code>| a | b |</code> tabela · <code>**negrito**</code></div>
+        <textarea class="md" id="ia-md" placeholder="Clique em “Gerar texto com IA” para criar o rascunho a partir das atividades do mês e das referências."></textarea>
+      </div>
       <p class="err" id="ia-err"></p>
     </div>
     <div class="card" id="report"></div>
@@ -454,7 +458,7 @@ $("#ia-gerar").onclick = async () => {
   btn.disabled = true; btn.textContent = "Gerando… (pode levar 1–2 min)";
   $("#ia-err").textContent = "";
   try {
-    const r = await api("POST", "/api/relatorio/rascunho", chaveRascunho());
+    const r = await api("POST", "/api/relatorio/rascunho", { ...chaveRascunho(), pedido: $("#ia-pedido").value });
     $("#ia-md").value = r.markdown; toast("Rascunho gerado — revise o texto");
   } catch (err) { $("#ia-err").textContent = err.message; }
   finally { btn.disabled = false; btn.textContent = txt; }

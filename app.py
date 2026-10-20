@@ -255,7 +255,8 @@ class Handler(BaseHTTPRequestHandler):
             mes, projeto = body.get("mes", ""), body.get("projeto", "")
             destino = rascunho_path(mes, projeto)
             refs = [os.path.join(modelo_dir("referencia"), n) for n in modelo_arquivos("referencia")]
-            md = relatorio.gerar_rascunho(atividades_do_mes(mes, projeto), mes, projeto, refs)
+            md = relatorio.gerar_rascunho(atividades_do_mes(mes, projeto), mes, projeto, refs,
+                                          str(body.get("pedido") or ""))
         except (ValueError, json.JSONDecodeError, RuntimeError) as e:
             return self.send(400, {"erro": str(e)})
         os.makedirs(RASCUNHOS_DIR, exist_ok=True)
