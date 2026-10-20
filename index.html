@@ -247,6 +247,9 @@
   .pv-aviso { background: #fff7e0; color: #7a5600; font-size: 12.5px; padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; font-family: system-ui, sans-serif; }
   .preview .vazio { color: #8a96a0; text-align: center; padding-top: 80px; }
 
+  .capa-rel { border: 1px solid var(--line); border-radius: 11px; padding: 10px 14px; margin-top: 14px; }
+  .capa-rel summary { cursor: pointer; font-size: 13.5px; }
+  .capa-rel[open] summary { margin-bottom: 4px; }
   .toolbar { display: flex; gap: 2px; flex-wrap: wrap; background: var(--surface-2); border-radius: 9px; padding: 3px; }
   .toolbar button { border: 0; background: none; min-width: 30px; height: 28px; padding: 0 7px; border-radius: 6px; cursor: pointer;
                     color: var(--text); font-size: 13px; }
@@ -478,6 +481,18 @@
             <textarea id="ia-pedido" rows="1" placeholder="ex.: resumo executivo no início; destaque as entregas; até 4 páginas"></textarea></label>
           <button class="btn primary" id="ia-gerar">✨ Gerar com IA</button>
         </div>
+        <details class="capa-rel" id="rc">
+          <summary><b>Capa</b> <span class="muted" id="rc-resumo"></span></summary>
+          <div class="muted small" style="margin:6px 0 10px">Preenche os marcadores <code>{{titulo}}</code>, <code>{{subtitulo}}</code>, <code>{{autor}}</code>,
+            <code>{{area}}</code> e <code>{{versao}}</code> do template (no da Indra, os textos de exemplo da capa). <code>{mes}</code> vira o nome do mês. Salva sozinho.</div>
+          <div class="capa-form">
+            <label class="f full">Título — a 1ª linha fica em destaque<textarea id="rc-titulo" rows="2"></textarea></label>
+            <label class="f full">Subtítulo<input id="rc-subtitulo" placeholder="Relatório de Atividades | {mes}"></label>
+            <label class="f">Autor – cargo<input id="rc-autor"></label>
+            <label class="f">Área<input id="rc-area"></label>
+            <label class="f">Versão<input id="rc-versao" placeholder="1.0"></label>
+          </div>
+        </details>
         <div class="editor-bar">
           <div class="seg" id="ed-modo">
             <button data-modo="split" class="on">Lado a lado</button>
@@ -562,7 +577,7 @@ Texto com **negrito**, *itálico*, ~~riscado~~ e [link](https://…).
 
       <div class="card">
         <div class="card-head"><h2>Modelos de relatório</h2>
-          <span class="muted small">Cada modelo tem o próprio template, referências e capa — ex.: um por cliente.</span></div>
+          <span class="muted small">Cada modelo tem o próprio template e referências — ex.: um por cliente.</span></div>
         <div class="perfis">
           <div>
             <div class="perfil-lista" id="perfil-lista"></div>
@@ -575,19 +590,6 @@ Texto com **negrito**, *itálico*, ~~riscado~~ e [link](https://…).
                 <div class="f"><span>Usar por padrão nos projetos</span>
                   <div class="tags" id="p-projetos"><input id="p-projeto-in" list="dl-projeto" placeholder="digite e Enter"></div></div>
                 <label class="toggle full"><input type="checkbox" id="p-principal"> Modelo principal (usado quando o projeto não tem um modelo próprio)</label>
-                <details class="ajuda full" id="capa-det">
-                  <summary>Dados da capa (opcional)</summary>
-                  <div class="corpo" style="margin-bottom:6px">Só são usados se o template tiver os marcadores
-                    <code>{{titulo}}</code>, <code>{{autor}}</code>, <code>{{area}}</code>, <code>{{subtitulo}}</code>, <code>{{versao}}</code>.
-                    Se a capa já vem pronta no template, deixe em branco.</div>
-                  <div class="capa-form">
-                    <label class="f full">Título<textarea id="c-titulo" rows="2"></textarea></label>
-                    <label class="f full"><span>Subtítulo · <code>{mes}</code> vira o nome do mês</span><input id="c-subtitulo"></label>
-                    <label class="f">Autor – cargo<input id="c-autor"></label>
-                    <label class="f">Área<input id="c-area"></label>
-                    <label class="f">Versão<input id="c-versao"></label>
-                  </div>
-                </details>
                 <div class="linha full" style="margin-top:4px">
                   <button class="btn primary" id="p-salvar">Salvar modelo</button>
                   <span class="spacer" style="flex:1"></span>
@@ -1008,7 +1010,29 @@ $("#r-perfil").onchange = () => {
 };
 
 /* modelo direto na tela do relatório: trocar template e acrescentar referências sem ir a Configurações */
+/* capa editada no próprio relatório (fica guardada no modelo) */
+const CAMPOS_CAPA = ["titulo", "subtitulo", "autor", "area", "versao"];
+function renderCapaRel() {
+  const p = perfilRel();
+  for (const c of CAMPOS_CAPA) if (document.activeElement !== $("#rc-" + c)) $("#rc-" + c).value = p[c] || "";
+  const sub = (p.subtitulo || "").replace("{mes}", nomeMes(estado.relMes));
+  $("#rc-resumo").textContent = p.titulo ? `· ${p.titulo.split("\n")[0]} · ${sub} · v${p.versao || "1.0"}` : "· vazia";
+}
+let capaT;
+CAMPOS_CAPA.forEach((c) => $("#rc-" + c).addEventListener("input", () => {
+  const p = perfilRel();
+  if (!p.id) return;
+  for (const k of CAMPOS_CAPA) p[k] = $("#rc-" + k).value;  // vale já para a pré-visualização
+  clearTimeout(capaT);
+  capaT = setTimeout(async () => {
+    const dados = {}; for (const k of CAMPOS_CAPA) dados[k] = p[k];
+    try { await api("PUT", "/api/perfis/" + p.id, dados); renderCapaRel(); renderChecks(); renderPreview(true); }
+    catch (err) { $("#ia-err").textContent = err.message; }
+  }, 500);
+}));
+
 function renderModeloBox() {
+  renderCapaRel();
   const p = perfilRel(), refs = p.arquivos?.referencia || [];
   $("#r-template-nome").innerHTML = p.arquivos?.padrao ? `<b>${esc(p.arquivos.padrao.nome)}</b>` : `<span style="color:var(--warn)">nenhum</span>`;
   $("#r-ref-nome").innerHTML = refs.length ? `<b title="${esc(refs.map((r) => r.nome).join("\n"))}">${refs.length}</b>` : `<span class="muted">nenhuma</span>`;
@@ -1222,7 +1246,7 @@ function renderChecks() {
     [temPadrao, temPadrao ? `Template do modelo “${esc(p.nome)}”: ${esc(p.arquivos.padrao.nome)}`
                           : `O modelo “${esc(p.nome || "")}” ainda não tem template — envie em <a href="#config">Configurações</a>`],
     [nRef > 0, nRef ? `${nRef} relatório(s) de referência para a IA` : "Sem relatórios de referência (opcional, melhora o texto da IA)"],
-    [capaOk, capaOk ? "Capa preenchida" : `Preencha a capa em <a href="#config">Configurações</a>`],
+    [capaOk, capaOk ? "Capa preenchida" : "Capa vazia — preencha no bloco “Capa” do passo 2 (se o template usar marcadores)"],
     [temSecao, temSecao ? "Texto com seções" : "O texto precisa de ao menos uma seção (<code># Título</code>)"],
     [!semEntrega, semEntrega ? "Nenhuma atividade marcada como entrega (opcional, ajuda a IA)" : "Entregas marcadas"],
   ].map(([ok, t]) => `<li class="${ok ? "" : "no"}">${t}</li>`).join("");
@@ -1277,7 +1301,6 @@ $("#m-copiar").onclick = async () => {
 };
 
 /* ============================ modelos de relatório ============================ */
-const CAPA = ["titulo", "subtitulo", "autor", "area", "versao"];
 let editProjetos = [];
 
 async function carregarPerfis() {
@@ -1300,9 +1323,7 @@ function renderPerfis() {
   if (!p) return;
   $("#p-nome").value = p.nome;
   $("#p-principal").checked = p.id === estado.principal;
-  for (const c of CAPA) $("#c-" + c).value = p[c] || "";
   editProjetos = [...p.projetos];
-  $("#capa-det").open = CAPA.some((c) => c !== "versao" && c !== "subtitulo" && p[c]);
   renderTags(); renderArquivos(p);
 }
 $("#perfil-lista").onclick = (e) => {
@@ -1322,7 +1343,6 @@ $("#p-salvar").onclick = async () => {
   const pendente = $("#p-projeto-in").value.trim();
   if (pendente && !editProjetos.includes(pendente)) { editProjetos.push(pendente); $("#p-projeto-in").value = ""; renderTags(); }
   const body = { nome: $("#p-nome").value, projetos: editProjetos, principal: $("#p-principal").checked };
-  for (const c of CAPA) body[c] = $("#c-" + c).value;
   try { await api("PUT", "/api/perfis/" + estado.perfilSel, body); await carregarPerfis(); renderPerfis(); toast("Modelo salvo"); }
   catch (err) { $("#m-err").textContent = err.message; }
 };
