@@ -9,3 +9,4 @@ modelos/referencia/*
 .env
 data/*.json
 data/rascunhos/
+modelos/perfis/

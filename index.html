@@ -4,25 +4,43 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Diário de Atividades</title>
+<script>
+  // aplica o tema antes de desenhar a página (evita piscar)
+  try {
+    const t = JSON.parse(localStorage.getItem("diario.tema") || "{}");
+    if (t.modo && t.modo !== "auto") document.documentElement.dataset.theme = t.modo;
+    if (t.l) { document.documentElement.style.setProperty("--accent-l", t.l); document.documentElement.style.setProperty("--accent-d", t.d); }
+  } catch {}
+</script>
 <style>
   :root {
+    --accent-l: #0b6e74; --accent-d: #3cbfc1;   /* cor de destaque (trocada em Aparência) */
     --bg: #f3f4f0; --surface: #ffffff; --surface-2: #eef0ea; --text: #16202a; --muted: #5d6974;
-    --line: #dde1d9; --accent: #0b6e74; --accent-soft: #d9eeee; --accent-text: #ffffff;
+    --line: #dde1d9; --accent: var(--accent-l); --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent); --accent-text: #ffffff;
     --danger: #c0392b; --danger-soft: #fbe7e4; --ok: #2f855a; --ok-soft: #e1f2e8; --warn: #a86b12; --warn-soft: #fbf0dc;
     --shadow: 0 1px 2px rgba(16, 24, 32, .05), 0 4px 16px rgba(16, 24, 32, .04);
     --radius: 14px; --side: 236px;
     --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
     color-scheme: light;
   }
+  /* escuro: segue o sistema, a menos que o tema tenha sido escolhido em Aparência */
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       --bg: #0e1316; --surface: #151c20; --surface-2: #1b2429; --text: #e5eaed; --muted: #8b99a2;
-      --line: #253036; --accent: #3cbfc1; --accent-soft: rgba(60, 191, 193, .13); --accent-text: #052526;
+      --line: #253036; --accent: var(--accent-d); --accent-text: #061a1b;
       --danger: #f07167; --danger-soft: rgba(240, 113, 103, .12); --ok: #5cc489; --ok-soft: rgba(92, 196, 137, .12);
       --warn: #e2b155; --warn-soft: rgba(226, 177, 85, .12);
       --shadow: 0 1px 2px rgba(0, 0, 0, .3);
       color-scheme: dark;
     }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1316; --surface: #151c20; --surface-2: #1b2429; --text: #e5eaed; --muted: #8b99a2;
+    --line: #253036; --accent: var(--accent-d); --accent-text: #061a1b;
+    --danger: #f07167; --danger-soft: rgba(240, 113, 103, .12); --ok: #5cc489; --ok-soft: rgba(92, 196, 137, .12);
+    --warn: #e2b155; --warn-soft: rgba(226, 177, 85, .12);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
@@ -88,7 +106,7 @@
   .btn.lg { padding: 11px 20px; font-size: 15px; }
   .btn svg { width: 16px; height: 16px; }
 
-  label.f { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 500; min-width: 0; }
+  .f { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--muted); font-weight: 500; min-width: 0; }
   input, select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
                             padding: 8px 11px; width: 100%; min-width: 0; outline: none; }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -122,7 +140,7 @@
   /* ---------- HOJE ---------- */
   .hoje-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
   .composer textarea.desc { min-height: 96px; font-size: 15px; border: 0; background: none; padding: 2px 0; box-shadow: none; }
-  .composer .fields { display: grid; grid-template-columns: 1.4fr 1.1fr .8fr .55fr; gap: 10px; margin-top: 12px;
+  .composer .fields { display: grid; grid-template-columns: .9fr 1.4fr 1.1fr .8fr .55fr; gap: 10px; margin-top: 12px;
                       padding-top: 14px; border-top: 1px solid var(--line); }
   .composer .recentes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
   .composer .actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
@@ -195,26 +213,52 @@
   .ia-bar textarea { min-height: 42px; height: 42px; }
   .editor-bar { display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; flex-wrap: wrap; }
   .editor-bar .spacer { flex: 1; }
-  .editor { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .editor.only-edit { grid-template-columns: 1fr; } .editor.only-edit .preview { display: none; }
+  .editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .editor.only-edit { grid-template-columns: 1fr; } .editor.only-edit .pv-wrap { display: none; }
   .editor.only-prev { grid-template-columns: 1fr; } .editor.only-prev textarea { display: none; }
   .editor textarea { min-height: 560px; height: 62vh; font: 13px/1.6 var(--mono); padding: 14px; }
   .preview { height: 62vh; min-height: 560px; overflow: auto; border: 1px solid var(--line); border-radius: 9px;
              background: #fff; color: #1d2a33; padding: 28px 34px; font-family: Calibri, Carlito, "Segoe UI", sans-serif; font-size: 14px; }
-  .preview h2 { color: #004254; font-size: 20px; margin: 22px 0 10px; }
-  .preview h3 { color: #004254; font-size: 16.5px; margin: 18px 0 8px; }
-  .preview h4 { color: #1f5f6e; font-size: 15px; margin: 14px 0 6px; }
-  .preview h5 { color: #1f5f6e; font-size: 14px; margin: 12px 0 6px; font-style: italic; }
+  .preview h2, .preview h3, .preview h4, .preview h5 { margin: 18px 0 8px; line-height: 1.25; }
+  .preview h2 { font-size: 20px; } .preview h3 { font-size: 17px; } .preview h4 { font-size: 15px; } .preview h5 { font-size: 14px; }
   .preview h2:first-child { margin-top: 0; }
   .preview p { margin: 0 0 10px; text-align: justify; }
-  .preview ul { margin: 0 0 10px; padding-left: 22px; }
-  .preview li.l2 { margin-left: 22px; list-style: circle; }
-  .preview table { border-collapse: collapse; width: 100%; margin: 6px 0 14px; font-size: 13px; }
-  .preview th, .preview td { border-top: 1px solid #004254; padding: 6px 8px; text-align: left; }
-  .preview th { border-bottom: 1px solid #004254; }
-  .preview td:first-child { background: #e3e2da; font-weight: 600; }
+  .preview ul, .preview ol { margin: 0 0 10px; padding-left: 22px; }
+  .preview ol { list-style: none; padding-left: 4px; }
+  .preview li.l2 { margin-left: 22px; } .preview ul li.l2 { list-style: circle; }
+  .preview li.l3 { margin-left: 44px; } .preview ul li.l3 { list-style: square; }
+  .preview .num { display: inline-block; min-width: 1.6em; }
+  .preview table { border-collapse: collapse; width: 100%; margin: 6px 0 14px; font-size: .92em; }
+  .preview th, .preview td { border-top: 1px solid #8c8c8c; padding: 6px 8px; text-align: left; vertical-align: top; }
+  .preview th { border-bottom: 1px solid #8c8c8c; }
+  .preview blockquote { margin: 0 0 10px; padding: 2px 0 2px 12px; border-left: 3px solid #a6a6a6; font-style: italic; }
+  .preview pre { background: #f2f2f2; padding: 8px 10px; font: 12.5px/1.45 Consolas, var(--mono); white-space: pre-wrap; margin: 0 0 10px; }
+  .preview code { background: #f0f0f0; color: inherit; }
+  .preview a { color: #0563c1; }
+  .preview hr { border: 0; border-top: 1px solid #a6a6a6; margin: 12px 0; }
+  /* documento real renderizado (docx-preview): páginas brancas sobre fundo cinza, com zoom para caber */
+  .preview.doc { padding: 0; background: #5b6066; }
+  .preview.doc .docx-wrapper { background: transparent; padding: 18px 0; }
+  .preview.doc .docx-wrapper > section.docx { box-shadow: 0 2px 10px rgba(0, 0, 0, .35); margin-bottom: 18px; }
+  .pv-wrap { position: relative; min-width: 0; }
+  .pv-status { position: absolute; top: 8px; right: 12px; z-index: 2; font-size: 12px; padding: 3px 9px; border-radius: 99px;
+               background: rgba(0, 0, 0, .55); color: #fff; pointer-events: none; transition: opacity .2s; }
+  .pv-status:empty { opacity: 0; }
+  .pv-aviso { background: #fff7e0; color: #7a5600; font-size: 12.5px; padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; font-family: system-ui, sans-serif; }
   .preview .vazio { color: #8a96a0; text-align: center; padding-top: 80px; }
 
+  .toolbar { display: flex; gap: 2px; flex-wrap: wrap; background: var(--surface-2); border-radius: 9px; padding: 3px; }
+  .toolbar button { border: 0; background: none; min-width: 30px; height: 28px; padding: 0 7px; border-radius: 6px; cursor: pointer;
+                    color: var(--text); font-size: 13px; }
+  .toolbar button:hover { background: var(--surface); }
+  .toolbar .sep { width: 1px; background: var(--line); margin: 4px 3px; }
+  .banner { background: var(--warn-soft); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+            border-radius: 11px; padding: 10px 14px; margin-bottom: 16px; font-size: 13.5px; }
+  .banner code { background: transparent; font-weight: 600; }
+  .modelo-box { border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; margin-bottom: 14px; display: grid; gap: 10px; }
+  .modelo-box .linha { gap: 8px; }
+  .modelo-box select { width: auto; min-width: 200px; }
+  .modelo-box .arq { font-size: 13px; }
   .export { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; }
   .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13.5px; }
   .checks li { display: flex; gap: 8px; align-items: center; }
@@ -230,13 +274,6 @@
   .capa-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; }
   .capa-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start; }
   .capa-form .full { grid-column: 1 / -1; }
-  .cover { aspect-ratio: 210 / 297; border-radius: 6px; background: #004254; color: #fff; padding: 22px 20px;
-           display: flex; flex-direction: column; font-family: Calibri, Carlito, "Segoe UI", sans-serif; box-shadow: var(--shadow); overflow: hidden; }
-  .cover .top { font-size: 10px; opacity: .8; line-height: 1.4; }
-  .cover .t1 { margin-top: auto; font-size: 19px; font-weight: 700; color: #6fd3cf; line-height: 1.15; }
-  .cover .t2 { font-size: 15px; font-weight: 600; line-height: 1.2; margin-top: 2px; white-space: pre-line; }
-  .cover .st { margin-top: 12px; font-size: 11px; opacity: .85; }
-  .cover .ft { margin-top: 26px; font-size: 9px; opacity: .6; }
   .modelos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .modelos .card { margin: 0; display: flex; flex-direction: column; gap: 12px; }
   .modelos h3 { font-size: 14.5px; }
@@ -250,6 +287,30 @@
   .arquivos li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
   .arquivos li:first-child { border-top: 0; }
   .arquivos .nome { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13.5px; }
+  .perfis { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: start; }
+  .perfil-lista { display: flex; flex-direction: column; gap: 6px; }
+  .perfil-item { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 11px; padding: 10px 12px;
+                 cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
+  .perfil-item:hover { border-color: var(--accent); }
+  .perfil-item.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .perfil-item b { font-size: 14px; display: flex; gap: 6px; align-items: center; }
+  .perfil-item .muted { font-size: 12px; }
+  .badge { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px;
+           border-radius: 5px; background: var(--accent-soft); color: var(--accent); }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; min-height: 38px; padding: 4px 6px;
+          border: 1px solid var(--line); border-radius: 9px; background: var(--bg); }
+  .tags input { border: 0; background: none; box-shadow: none !important; flex: 1; min-width: 140px; padding: 4px; }
+  .tags .chip button { border: 0; background: none; padding: 0 0 0 2px; cursor: pointer; color: var(--muted); font-size: 13px; line-height: 1; }
+  details.ajuda summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 500; }
+  details.ajuda { margin-top: 14px; }
+  details.ajuda .corpo { font-size: 13px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+  .ia-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ia-form .full { grid-column: 1 / -1; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatches button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--surface); cursor: pointer;
+                     box-shadow: 0 0 0 1px var(--line); padding: 0; }
+  .swatches button.on { box-shadow: 0 0 0 2px var(--text); }
+  .linha { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   pre.snippet { background: var(--surface-2); border-radius: 9px; padding: 12px 14px; font: 12.5px/1.55 var(--mono); overflow: auto; margin: 8px 0 0; }
 
   .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text);
@@ -263,9 +324,9 @@
     .hoje-grid { grid-template-columns: 1fr; }
     .hoje-grid > .col-side { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .hoje-grid > .col-side .card + .card { margin-top: 0; }
-    .editor { grid-template-columns: 1fr; } .editor .preview { display: none; }
-    .editor.only-prev .preview { display: block; }
-    .capa-grid { grid-template-columns: 1fr; } .cover { max-width: 260px; }
+    .editor { grid-template-columns: 1fr; } .editor .pv-wrap { display: none; }
+    .editor.only-prev .pv-wrap { display: block; }
+    .capa-grid, .perfis { grid-template-columns: 1fr; }
   }
   @media (max-width: 760px) {
     .app { grid-template-columns: 1fr; }
@@ -273,7 +334,7 @@
     .brand span, .side-foot { display: none; }
     nav { flex-direction: row; } nav a span { display: none; }
     main { padding: 20px 16px 64px; }
-    .composer .fields, .capa-form, .modelos, .hoje-grid > .col-side, .export, .ia-bar { grid-template-columns: 1fr; }
+    .composer .fields, .capa-form, .modelos, .hoje-grid > .col-side, .export, .ia-bar, .ia-form { grid-template-columns: 1fr; }
   }
   @media print {
     body { background: #fff; color: #000; }
@@ -302,15 +363,19 @@
         <span>Relatório do mês</span></a>
       <a href="#config" data-view="config">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
-        <span>Capa e modelos</span></a>
+        <span>Configurações</span></a>
     </nav>
     <div class="side-foot">
       <div class="progress" id="side-progress"></div>
-      <span class="pill" id="side-ia">IA</span>
+      <div class="linha" style="justify-content:space-between">
+        <span class="pill" id="side-ia">IA</span>
+        <button class="btn icon ghost" id="tema-rapido" title="Alternar claro/escuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+      </div>
     </div>
   </aside>
 
   <main>
+    <div class="banner hidden" id="banner-versao"></div>
     <!-- ======================= REGISTRO DIÁRIO ======================= -->
     <section class="view" id="view-hoje">
       <div class="page-head">
@@ -332,13 +397,13 @@
             <textarea class="desc" id="f-descricao" required
               placeholder="O que você fez? Descreva o resultado, não só a tarefa — ex.: “Corrigido o tratamento de PDFs corrompidos no worker; agora vão direto ao dead-letter.”"></textarea>
             <div class="fields">
+              <label class="f">Data<input type="date" id="f-data" required></label>
               <label class="f">Projeto / cliente<input id="f-projeto" list="dl-projeto" placeholder="aie-next-ai-worker"></label>
               <label class="f">Categoria<input id="f-categoria" list="dl-categoria" placeholder="Desenvolvimento"></label>
               <label class="f">Ticket / card<input id="f-ticket" placeholder="#1234"></label>
               <label class="f">Horas<input id="f-horas" type="number" step="0.25" min="0" max="24" placeholder="opcional"></label>
             </div>
             <div class="recentes" id="recentes"></div>
-            <input type="hidden" id="f-data">
             <div class="actions">
               <label class="toggle" title="Marque o que foi entregue/concluído: a IA destaca no relatório">
                 <input type="checkbox" id="f-entregavel"> É uma entrega do mês</label>
@@ -389,7 +454,7 @@
           <b id="r-mes-nome"></b>
           <button class="btn icon ghost" id="r-next" title="Próximo mês">›</button>
         </div>
-        <select id="r-projeto" style="width:auto;min-width:170px"><option value="">Todos os projetos</option></select>
+        <select id="r-projeto" style="width:auto;min-width:170px" title="Projeto"><option value="">Todos os projetos</option></select>
       </div>
 
       <div class="card">
@@ -419,20 +484,54 @@
             <button data-modo="edit">Editar</button>
             <button data-modo="prev">Visualizar</button>
           </div>
-          <span class="muted small">Formato: <code># Seção</code> <code>## Subseção</code> <code>- item</code> <code>| a | b |</code> <code>**negrito**</code></span>
+          <div class="toolbar" id="toolbar" title="Formatação em Markdown">
+            <button data-md="h1" title="Seção (# )"><b>T1</b></button><button data-md="h2" title="Subseção (## )"><b>T2</b></button><button data-md="h3" title="Nível 3 (### )"><b>T3</b></button>
+            <span class="sep"></span>
+            <button data-md="b" title="Negrito (Ctrl+B)"><b>B</b></button><button data-md="i" title="Itálico (Ctrl+I)"><i>I</i></button><button data-md="s" title="Riscado"><s>S</s></button><button data-md="c" title="Código">&lt;/&gt;</button>
+            <span class="sep"></span>
+            <button data-md="ul" title="Lista">• Lista</button><button data-md="ol" title="Lista numerada">1. Lista</button><button data-md="q" title="Citação">❝</button>
+            <button data-md="t" title="Tabela">▦ Tabela</button><button data-md="a" title="Link">🔗</button><button data-md="hr" title="Linha">―</button>
+          </div>
           <span class="spacer"></span>
           <span class="muted small" id="ed-info"></span>
         </div>
         <div class="editor" id="editor">
           <textarea id="ia-md" spellcheck="true"
-            placeholder="Clique em “Gerar com IA” para criar o rascunho a partir das atividades do mês e dos relatórios de referência — ou escreva aqui."></textarea>
-          <div class="preview" id="preview"></div>
+            placeholder="Clique em “Gerar com IA” para criar o rascunho a partir das atividades do mês e dos relatórios de referência — ou escreva aqui em Markdown:
+
+# Seção
+## Subseção
+Texto com **negrito**, *itálico*, ~~riscado~~ e [link](https://…).
+- item
+1. item numerado
+> citação
+| Coluna | Coluna |
+|---|---|
+| a | b |"></textarea>
+          <div class="pv-wrap"><div class="pv-status" id="pv-status"></div><div class="preview" id="preview"></div></div>
         </div>
         <p class="err" id="ia-err"></p>
       </div>
 
       <div class="card">
         <div class="card-head"><div class="step"><span class="n">3</span><h2>Entregar</h2></div></div>
+        <div class="modelo-box">
+          <div class="linha">
+            <b class="small">Modelo</b>
+            <select id="r-perfil" title="Template, referências e capa usados no relatório"></select>
+            <button class="btn sm" id="r-novo-perfil">+ Novo modelo</button>
+            <span class="spacer" style="flex:1"></span>
+            <a class="btn sm ghost" href="#config">Configurar…</a>
+          </div>
+          <div class="linha arq">
+            <span class="muted">Template:</span> <span id="r-template-nome"></span>
+            <button class="btn sm" id="r-trocar-template">Enviar / trocar template</button>
+            <span class="muted" style="margin-left:10px">Referências:</span> <span id="r-ref-nome"></span>
+            <button class="btn sm" id="r-add-ref">+ Referência</button>
+            <input type="file" id="r-template-file" accept=".docx,.dotx" class="hidden">
+            <input type="file" id="r-ref-file" accept=".docx,.dotx,.pdf" multiple class="hidden">
+          </div>
+        </div>
         <div class="export">
           <div>
             <ul class="checks" id="checks"></ul>
@@ -456,45 +555,109 @@
     <section class="view hidden" id="view-config">
       <div class="page-head">
         <div>
-          <h1>Capa e modelos</h1>
-          <div class="sub">O que não muda de um mês para o outro. Configure uma vez.</div>
+          <h1>Configurações</h1>
+          <div class="sub">Modelos de relatório, inteligência artificial e aparência. Configure uma vez.</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-head"><h2>Capa do relatório</h2><span class="spacer"></span>
-          <button class="btn primary sm" id="c-salvar">Salvar capa</button></div>
-        <div class="capa-grid">
-          <div class="capa-form">
-            <label class="f full">Título — a 1ª linha fica em destaque<textarea id="c-titulo" rows="3"></textarea></label>
-            <label class="f full"><span>Subtítulo · <code>{mes}</code> vira o nome do mês</span><input id="c-subtitulo"></label>
-            <label class="f">Autor – cargo<input id="c-autor"></label>
-            <label class="f">Área<input id="c-area"></label>
-            <label class="f">Versão<input id="c-versao"></label>
+        <div class="card-head"><h2>Modelos de relatório</h2>
+          <span class="muted small">Cada modelo tem o próprio template, referências e capa — ex.: um por cliente.</span></div>
+        <div class="perfis">
+          <div>
+            <div class="perfil-lista" id="perfil-lista"></div>
+            <button class="btn sm" id="p-novo" style="margin-top:10px;width:100%">+ Novo modelo</button>
           </div>
-          <div class="cover" id="cover"></div>
+          <div id="perfil-editor">
+            <div>
+              <div class="capa-form">
+                <label class="f">Nome do modelo<input id="p-nome" placeholder="ex.: Indra – Saúde"></label>
+                <div class="f"><span>Usar por padrão nos projetos</span>
+                  <div class="tags" id="p-projetos"><input id="p-projeto-in" list="dl-projeto" placeholder="digite e Enter"></div></div>
+                <label class="toggle full"><input type="checkbox" id="p-principal"> Modelo principal (usado quando o projeto não tem um modelo próprio)</label>
+                <details class="ajuda full" id="capa-det">
+                  <summary>Dados da capa (opcional)</summary>
+                  <div class="corpo" style="margin-bottom:6px">Só são usados se o template tiver os marcadores
+                    <code>{{titulo}}</code>, <code>{{autor}}</code>, <code>{{area}}</code>, <code>{{subtitulo}}</code>, <code>{{versao}}</code>.
+                    Se a capa já vem pronta no template, deixe em branco.</div>
+                  <div class="capa-form">
+                    <label class="f full">Título<textarea id="c-titulo" rows="2"></textarea></label>
+                    <label class="f full"><span>Subtítulo · <code>{mes}</code> vira o nome do mês</span><input id="c-subtitulo"></label>
+                    <label class="f">Autor – cargo<input id="c-autor"></label>
+                    <label class="f">Área<input id="c-area"></label>
+                    <label class="f">Versão<input id="c-versao"></label>
+                  </div>
+                </details>
+                <div class="linha full" style="margin-top:4px">
+                  <button class="btn primary" id="p-salvar">Salvar modelo</button>
+                  <span class="spacer" style="flex:1"></span>
+                  <button class="btn ghost danger sm" id="p-excluir">Excluir modelo</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="modelos" style="margin-top:18px">
+              <div class="card" data-modelo="padrao">
+                <div><h3>Template (.docx / .dotx)</h3>
+                  <div class="muted small">Logo, cabeçalho, rodapé, fontes, cores e estilos. A IA nunca mexe na formatação.</div></div>
+                <div class="drop" tabindex="0"><span class="icone">📄</span><div class="status"></div></div>
+                <input type="file" accept=".docx,.dotx" class="hidden">
+                <ul class="arquivos"></ul>
+              </div>
+              <div class="card" data-modelo="referencia" data-multiplo>
+                <div><h3>Relatórios de referência</h3>
+                  <div class="muted small">Até 10 relatórios prontos do jeito que o cliente espera. A IA copia a estrutura e o tom.</div></div>
+                <div class="drop" tabindex="0"><span class="icone">📚</span><div class="status"></div></div>
+                <input type="file" accept=".docx,.dotx,.pdf" class="hidden" multiple>
+                <ul class="arquivos"></ul>
+              </div>
+            </div>
+            <p class="err" id="m-err"></p>
+            <details class="ajuda">
+              <summary>Como preparar um template próprio</summary>
+              <div class="corpo">
+                Qualquer .docx ou .dotx serve. Escreva estes marcadores onde quiser — na capa, no cabeçalho ou no rodapé — e eles são preenchidos ao baixar:
+                <code>{{titulo}}</code> <code>{{subtitulo}}</code> <code>{{autor}}</code> <code>{{area}}</code> <code>{{versao}}</code>
+                <code>{{mes}}</code> <code>{{projeto}}</code> <code>{{data}}</code>.<br>
+                O texto do relatório entra no parágrafo <code>{{conteudo}}</code>. Sem ele, o texto substitui o conteúdo de exemplo a partir do primeiro
+                <b>Título 1</b> depois do sumário; se o template não tiver nada disso, vai para o fim do documento.<br>
+                Os títulos usam os estilos <b>Título 1–4</b> e as listas o estilo <b>Lista com marcadores</b> do template — ajuste-os no Word para mudar o visual.
+              </div>
+            </details>
+          </div>
         </div>
       </div>
 
-      <div class="modelos" style="margin-top:16px">
-        <div class="card" data-modelo="padrao">
-          <div><h3>Padrão da empresa (.docx)</h3>
-            <div class="muted small">Um arquivo só: logo, cabeçalho, rodapé, fontes e cores. A IA nunca mexe na formatação.</div></div>
-          <div class="drop" tabindex="0"><span class="icone">📄</span><div class="status"></div></div>
-          <input type="file" accept=".docx,.dotx,.pdf" class="hidden">
-          <ul class="arquivos"></ul>
+      <div class="card">
+        <div class="card-head"><h2>Inteligência artificial</h2><span class="spacer"></span><span class="pill" id="ia-pill"></span></div>
+        <div class="ia-form">
+          <label class="f">Provedor<select id="ia-provedor"></select></label>
+          <label class="f">Modelo<input id="ia-modelo" list="dl-modelos" placeholder="ex.: gpt-5.5"></label>
+          <label class="f full" id="ia-base-wrap">Endereço da API (base URL)<input id="ia-base" placeholder="https://…/v1"></label>
+          <label class="f full">Chave da API<input id="ia-chave" type="password" autocomplete="off" placeholder="cole a chave aqui"></label>
         </div>
-        <div class="card" data-modelo="referencia" data-multiplo>
-          <div><h3>Relatórios de referência</h3>
-            <div class="muted small">Até 10 relatórios prontos, do jeito que o cliente espera. A IA copia a estrutura e o tom.</div></div>
-          <div class="drop" tabindex="0"><span class="icone">📚</span><div class="status"></div></div>
-          <input type="file" accept=".docx,.dotx,.pdf" class="hidden" multiple>
-          <ul class="arquivos"></ul>
+        <div class="muted small" id="ia-dica" style="margin-top:8px"></div>
+        <div class="linha" style="margin-top:14px">
+          <button class="btn primary" id="ia-salvar">Salvar</button>
+          <button class="btn" id="ia-testar">Testar conexão</button>
+          <button class="btn ghost sm danger" id="ia-limpar">Apagar chave</button>
+          <span class="muted small" id="ia-resultado"></span>
+        </div>
+        <datalist id="dl-modelos"></datalist>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Aparência</h2></div>
+        <div class="linha" style="gap:22px">
+          <div><div class="muted small" style="margin-bottom:6px">Tema</div>
+            <div class="seg" id="tema-modo">
+              <button data-modo="auto">Sistema</button><button data-modo="light">Claro</button><button data-modo="dark">Escuro</button>
+            </div></div>
+          <div><div class="muted small" style="margin-bottom:6px">Cor de destaque</div><div class="swatches" id="tema-cor"></div></div>
         </div>
       </div>
-      <p class="err" id="m-err"></p>
 
-      <div class="card" style="margin-top:16px">
+      <div class="card">
         <div class="card-head"><h2>Registro pelo Claude</h2></div>
         <p class="muted small" style="margin:0">A skill <b>registrar-atividade</b> do Claude Code envia as atividades para este app.
           Também dá para lançar por qualquer script — aceita um objeto ou uma lista:</p>
@@ -511,6 +674,9 @@
 <datalist id="dl-projeto"></datalist>
 <datalist id="dl-categoria"></datalist>
 <div class="toast" id="toast"></div>
+<script src="/static/jszip.min.js"></script>
+<script src="/static/docx-preview.min.js"></script>
+<style id="pv-style"></style>
 
 <script>
 const $ = (s) => document.querySelector(s);
@@ -528,7 +694,8 @@ const hoje = () => iso(new Date());
 const cor = (txt) => { let h = 0; for (const c of String(txt)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 55% 52%)`; };
 const CAMPOS = ["data", "projeto", "categoria", "ticket", "descricao", "horas", "entregavel"];
 
-const estado = { dia: hoje(), calMes: hoje().slice(0, 7), relMes: hoje().slice(0, 7), editando: null, cfg: null, modelos: null };
+const estado = { dia: hoje(), calMes: hoje().slice(0, 7), relMes: hoje().slice(0, 7), editando: null,
+                 ia: null, perfis: [], principal: null, perfilSel: null };
 const cacheMes = {};
 
 function toast(msg) {
@@ -575,14 +742,21 @@ function rota() {
   $$("nav a").forEach((a) => a.classList.toggle("on", a.dataset.view === v));
   if (v === "hoje") carregarDia();
   if (v === "relatorio") carregarRelatorio();
-  if (v === "config") { carregarCapa(); carregarModelos(); }
+  if (v === "config") { carregarPerfis().then(renderPerfis); carregarIA(); renderTema(); }
   window.scrollTo(0, 0);
 }
 window.addEventListener("hashchange", rota);
+// ao voltar para a aba (ex.: depois de registrar pelo Claude), recarrega o que estiver na tela
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  for (const k in cacheMes) delete cacheMes[k];
+  if (!$("#view-hoje").classList.contains("hidden")) carregarDia();
+  else if (!$("#view-relatorio").classList.contains("hidden")) { carregarRelatorio(); }
+});
 
 async function atualizarLateral() {
   const mes = hoje().slice(0, 7);
-  const itens = await atividadesDoMes(mes);
+  const itens = await atividadesDoMes(mes);  // já atualizado por carregarDia
   const uteis = diasUteisAteHoje(mes), faltam = diasSemRegistro(mes, itens).length;
   const feitos = uteis - faltam;
   $("#side-progress").innerHTML = `<b>${esc(cap(parseIso(mes + "-01").toLocaleDateString("pt-BR", { month: "long" })))}</b>
@@ -614,7 +788,7 @@ async function carregarDia() {
   $("#day-title").textContent = ehHoje ? "Hoje" : cap(d.toLocaleDateString("pt-BR", { weekday: "long" }));
   $("#day-sub").textContent = cap(d.toLocaleDateString("pt-BR", { weekday: ehHoje ? "long" : undefined, day: "numeric", month: "long", year: "numeric" }));
   if (!estado.editando) $("#f-data").value = estado.dia;
-  const itensMes = await atividadesDoMes(estado.dia.slice(0, 7));
+  const itensMes = await atividadesDoMes(estado.dia.slice(0, 7), true);
   itensDia = itensMes.filter((i) => i.data === estado.dia);
   renderLista();
   if (estado.calMes !== estado.dia.slice(0, 7)) estado.calMes = estado.dia.slice(0, 7);
@@ -774,8 +948,9 @@ async function carregarRelatorio() {
   const sel = $("#r-projeto"), atual = sel.value;
   sel.innerHTML = `<option value="">Todos os projetos</option>` + projetos.map((p) => `<option>${esc(p)}</option>`).join("");
   sel.value = projetos.includes(atual) ? atual : "";
+  await carregarPerfis();
+  escolherPerfilRel();
   renderAtividades();
-  if (!estado.cfg) await carregarConfig();
   await carregarRascunho();
 }
 
@@ -823,19 +998,72 @@ $("#r-grupos").onchange = async (e) => {
   } catch (err) { e.target.checked = !e.target.checked; toast(err.message); }
 };
 
-function mudaMesRel(delta) { estado.relMes = somaMes(estado.relMes, delta); carregarRelatorio(); }
+async function mudaMesRel(delta) { await salvarRascunho(); estado.relMes = somaMes(estado.relMes, delta); carregarRelatorio(); }
 $("#r-prev").onclick = () => mudaMesRel(-1);
 $("#r-next").onclick = () => mudaMesRel(1);
-$("#r-projeto").onchange = () => { renderAtividades(); carregarRascunho(); };
+$("#r-projeto").onchange = async () => { await salvarRascunho(); escolherPerfilRel(); renderAtividades(); carregarRascunho(); };
+$("#r-perfil").onchange = () => {
+  try { localStorage.setItem("diario.perfil." + (filtroProjeto() || "*"), $("#r-perfil").value); } catch {}
+  renderModeloBox(); renderPreview(true);
+};
+
+/* modelo direto na tela do relatório: trocar template e acrescentar referências sem ir a Configurações */
+function renderModeloBox() {
+  const p = perfilRel(), refs = p.arquivos?.referencia || [];
+  $("#r-template-nome").innerHTML = p.arquivos?.padrao ? `<b>${esc(p.arquivos.padrao.nome)}</b>` : `<span style="color:var(--warn)">nenhum</span>`;
+  $("#r-ref-nome").innerHTML = refs.length ? `<b title="${esc(refs.map((r) => r.nome).join("\n"))}">${refs.length}</b>` : `<span class="muted">nenhuma</span>`;
+  renderChecks();
+}
+async function enviarParaModelo(tipo, files) {
+  const pid = $("#r-perfil").value, erros = [];
+  for (const f of files) {
+    try {
+      const r = await fetch(`/api/perfis/${pid}/${tipo}?nome=${encodeURIComponent(f.name)}`, { method: "POST",
+        headers: { "Content-Type": "application/octet-stream" }, body: f });
+      if (!r.ok) throw new Error((await r.json()).erro || "Erro ao enviar");
+    } catch (err) { erros.push(`${f.name}: ${err.message}`); }
+  }
+  await carregarPerfis(); renderModeloBox(); renderPreview(true);
+  if (erros.length) $("#ia-err").textContent = erros.join(" · ");
+  else toast(tipo === "padrao" ? "Template atualizado" : "Referência adicionada");
+}
+$("#r-trocar-template").onclick = () => $("#r-template-file").click();
+$("#r-add-ref").onclick = () => $("#r-ref-file").click();
+$("#r-template-file").onchange = (e) => { const f = [...e.target.files]; e.target.value = ""; if (f.length) enviarParaModelo("padrao", f.slice(0, 1)); };
+$("#r-ref-file").onchange = (e) => { const f = [...e.target.files]; e.target.value = ""; if (f.length) enviarParaModelo("referencia", f); };
+$("#r-novo-perfil").onclick = async () => {
+  const nome = prompt("Nome do novo modelo (ex.: Cliente X):");
+  if (!nome) return;
+  try {
+    const p = await api("POST", "/api/perfis", { nome, copiar_de: $("#r-perfil").value });
+    await carregarPerfis(); escolherPerfilRel();
+    $("#r-perfil").value = p.id; $("#r-perfil").dispatchEvent(new Event("change"));
+    toast("Modelo criado — envie o template");
+  } catch (err) { toast(err.message); }
+};
+
+/** Modelo do relatório: o escolhido antes para o projeto; senão o associado ao projeto; senão o principal. */
+function escolherPerfilRel() {
+  const sel = $("#r-perfil"), proj = filtroProjeto();
+  sel.innerHTML = estado.perfis.map((p) => `<option value="${esc(p.id)}">${esc(p.nome)}${p.id === estado.principal ? " (principal)" : ""}</option>`).join("");
+  let id = null;
+  try { id = localStorage.getItem("diario.perfil." + (proj || "*")); } catch {}
+  if (!estado.perfis.some((p) => p.id === id)) id = null;
+  id ||= estado.perfis.find((p) => proj && p.projetos.includes(proj))?.id || estado.principal;
+  if (id) sel.value = id;
+  renderModeloBox();
+}
+const perfilRel = () => estado.perfis.find((p) => p.id === $("#r-perfil").value) || {};
 
 /* ---------- texto + preview ---------- */
 async function carregarConfig() {
-  estado.cfg = await api("GET", "/api/relatorio/config");
-  const ia = estado.cfg.ia;
-  $("#ia-status").textContent = ia ? `IA: ${estado.cfg.modelo}` : "IA desligada — configure OPENAI_API_KEY no .env";
-  $("#ia-gerar").disabled = !ia;
-  $("#side-ia").textContent = ia ? `IA ativa · ${estado.cfg.modelo}` : "IA desligada";
-  $("#side-ia").classList.toggle("on", !!ia);
+  const ia = estado.ia = await api("GET", "/api/ia");
+  const nome = ia.provedores[ia.provedor]?.nome || ia.provedor;
+  $("#ia-status").innerHTML = ia.ativa ? `IA: ${esc(nome)} · ${esc(ia.modelo)}` : `IA desligada — configure em <a href="#config" style="color:var(--accent)">Configurações</a>`;
+  $("#ia-gerar").disabled = !ia.ativa;
+  $("#side-ia").textContent = ia.ativa ? `IA · ${ia.modelo}` : "IA desligada";
+  $("#side-ia").classList.toggle("on", !!ia.ativa);
+  return ia;
 }
 
 async function carregarRascunho() {
@@ -844,73 +1072,119 @@ async function carregarRascunho() {
   $("#ia-md").value = r.markdown;
   $("#ia-err").textContent = "";
   $("#ed-info").textContent = r.markdown ? "Rascunho carregado" : "";
-  renderPreview();
+  renderPreview(true);
 }
 
-/** Mesmo Markdown simples que o relatorio.py entende. */
-function mdBlocos(md) {
-  const blocos = []; let par = [], tab = [];
-  const fechaPar = () => { if (par.length) { blocos.push(["p", par.join(" ")]); par = []; } };
-  const fechaTab = () => { if (tab.length) { blocos.push(["tabela", tab]); tab = []; } };
-  for (const linha of md.replace(/\r\n/g, "\n").split("\n")) {
-    const s = linha.trim();
-    if (s.startsWith("|")) {
-      fechaPar();
-      const cels = s.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
-      if (!cels.filter(Boolean).every((c) => /^:?-{2,}:?$/.test(c))) tab.push(cels);
-      continue;
+/** Pré-visualização do documento de verdade: o servidor monta o .docx sobre o template do modelo e o
+ *  navegador desenha as páginas (capa, cabeçalho, rodapé, estilos). Sem template, mostra uma prévia simples. */
+let previewT, previewSeq = 0;
+function renderPreview(imediato = false) {
+  clearTimeout(previewT);
+  previewT = setTimeout(async () => {
+    const md = $("#ia-md").value, seq = ++previewSeq, pv = $("#preview");
+    $("#ed-info").dataset.palavras = (md.match(/\S+/g) || []).length;
+    renderChecks();
+    if (!md.trim()) { pv.classList.remove("doc"); pv.innerHTML = `<div class="vazio">A pré-visualização aparece aqui.</div>`; return; }
+    const p = perfilRel();
+    let aviso = "";
+    if (p.arquivos?.padrao && window.docx) {
+      $("#pv-status").textContent = "Atualizando…";
+      try {
+        const r = await fetch("/api/relatorio/docx", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...chaveRascunho(), perfil: p.id, markdown: md }) });
+        if (!r.ok) throw new Error((await r.json()).erro || "Erro ao montar o documento");
+        const blob = await r.blob();
+        if (seq !== previewSeq) return;  // já há uma versão mais nova a caminho
+        const destino = document.createElement("div");
+        await docx.renderAsync(blob, destino, null, { className: "docx", inWrapper: true, breakPages: true,
+          ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, renderFootnotes: true,
+          useBase64URL: true, experimental: true });
+        if (seq !== previewSeq) return;
+        const pos = pv.scrollTop / Math.max(1, pv.scrollHeight - pv.clientHeight);
+        pv.classList.add("doc"); pv.replaceChildren(destino); ajustarZoom();
+        pv.scrollTop = pos * (pv.scrollHeight - pv.clientHeight);
+        $("#pv-status").textContent = "";
+        return;
+      } catch (err) {
+        $("#pv-status").textContent = "";
+        aviso = `Não deu para montar o documento: ${esc(err.message)} — mostrando prévia simples.`;
+      }
+    } else {
+      aviso = window.docx ? `O modelo “${esc(p.nome || "")}” não tem template — prévia simples. Envie o template no passo 3.` : "";
     }
-    fechaTab();
-    const h = s.match(/^(#{1,4})\s+(.*)/), li = linha.trimEnd().match(/^( *)(?:[-*•]|\d+[.)])\s+(.*)/);
-    if (!s) fechaPar();
-    else if (h) { fechaPar(); blocos.push(["h", h[1].length, h[2].replace(/^[\d.]+\s+/, "")]); }
-    else if (li) { fechaPar(); blocos.push(["li", li[1].length >= 2 ? 2 : 1, li[2]]); }
-    else par.push(s);
-  }
-  fechaPar(); fechaTab();
-  return blocos;
+    try {
+      const r = await api("POST", "/api/markdown", { markdown: md, perfil: p.id });
+      if (seq !== previewSeq) return;
+      $("#pv-style").textContent = r.css;
+      pv.classList.remove("doc");
+      pv.innerHTML = (aviso ? `<div class="pv-aviso">${aviso}</div>` : "") + r.html;
+    } catch (err) { pv.innerHTML = `<div class="vazio">Não foi possível pré-visualizar: ${esc(err.message)}</div>`; }
+  }, imediato ? 0 : 700);
 }
-const inline = (t) => esc(t).replace(/`/g, "").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\*([^*]+)\*/g, "<i>$1</i>");
-
-function renderPreview() {
-  const md = $("#ia-md").value;
-  const palavras = (md.match(/\S+/g) || []).length;
-  if (!md.trim()) { $("#preview").innerHTML = `<div class="vazio">A pré-visualização aparece aqui.</div>`; renderChecks(); return; }
-  const cont = [0, 0, 0, 0]; let html = "", lista = false;
-  for (const b of mdBlocos(md)) {
-    if (b[0] !== "li" && lista) { html += "</ul>"; lista = false; }
-    if (b[0] === "h") {
-      const n = b[1]; cont[n - 1]++; cont.fill(0, n);
-      html += `<h${n + 1}>${cont.slice(0, n).join(".")}. ${inline(b[2])}</h${n + 1}>`;
-    } else if (b[0] === "p") html += `<p>${inline(b[1])}</p>`;
-    else if (b[0] === "li") { if (!lista) { html += "<ul>"; lista = true; } html += `<li class="l${b[1]}">${inline(b[2])}</li>`; }
-    else if (b[0] === "tabela") {
-      const [cab, ...linhas] = b[1];
-      html += `<table><tr>${cab.map((c) => `<th>${inline(c)}</th>`).join("")}</tr>` +
-        linhas.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("") + "</table>";
-    }
-  }
-  if (lista) html += "</ul>";
-  $("#preview").innerHTML = html;
-  $("#ed-info").dataset.palavras = palavras;
-  renderChecks();
+function ajustarZoom() {
+  const pv = $("#preview"), w = pv.querySelector(".docx-wrapper"), pag = pv.querySelector("section.docx");
+  if (!w || !pag) return;
+  w.style.zoom = 1;
+  w.style.zoom = Math.min(1, (pv.clientWidth - 16) / (pag.offsetWidth + 24)).toFixed(3);
 }
+window.addEventListener("resize", ajustarZoom);
 
-let salvarT;
+let salvarT, salvarPendente = null;
+function salvarRascunho() {
+  if (!salvarPendente) return Promise.resolve();
+  const dados = salvarPendente; salvarPendente = null; clearTimeout(salvarT);
+  return api("PUT", "/api/relatorio/rascunho", dados)
+    .then(() => { $("#ed-info").textContent = `Salvo às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${$("#ed-info").dataset.palavras || 0} palavras`; })
+    .catch(() => { $("#ed-info").textContent = "Não foi possível salvar o rascunho"; });
+}
 $("#ia-md").oninput = () => {
   renderPreview();
   $("#ed-info").textContent = "Salvando…";
+  // a chave (mês/projeto) é a do momento da digitação: trocar de projeto não grava o texto no rascunho errado
+  salvarPendente = { ...chaveRascunho(), markdown: $("#ia-md").value };
   clearTimeout(salvarT);
-  salvarT = setTimeout(() => api("PUT", "/api/relatorio/rascunho", { ...chaveRascunho(), markdown: $("#ia-md").value })
-    .then(() => { $("#ed-info").textContent = `Salvo às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${$("#ed-info").dataset.palavras || 0} palavras`; })
-    .catch(() => { $("#ed-info").textContent = "Não foi possível salvar o rascunho"; }), 600);
+  salvarT = setTimeout(salvarRascunho, 600);
 };
+window.addEventListener("beforeunload", () => { if (salvarPendente) navigator.sendBeacon?.("/api/relatorio/rascunho-beacon", JSON.stringify(salvarPendente)); });
+
+/* barra de formatação Markdown */
+function editarMd(fn) {
+  const ta = $("#ia-md"), { selectionStart: a, selectionEnd: b, value: v } = ta;
+  const [novo, selA, selB] = fn(v.slice(0, a), v.slice(a, b), v.slice(b));
+  ta.focus(); ta.setRangeText(novo, a, b, "end");
+  ta.setSelectionRange(a + selA, a + selB);
+  ta.dispatchEvent(new Event("input"));
+}
+const envolver = (marca, vazio) => editarMd((_, sel) => {
+  const t = sel || vazio; return [marca + t + marca, marca.length, marca.length + t.length];
+});
+const prefixar = (fnPrefixo) => editarMd((antes, sel) => {
+  const inicioLinha = antes.length === 0 || antes.endsWith("\n");
+  const linhas = (sel || "texto").split("\n").map((l, i) => fnPrefixo(i) + l.replace(/^(#{1,6}\s+|[-*+]\s+|\d+[.)]\s+|>\s?)/, ""));
+  const t = (inicioLinha ? "" : "\n") + linhas.join("\n");
+  return [t, inicioLinha ? 0 : 1, t.length];
+});
+const ACOES_MD = {
+  h1: () => prefixar(() => "# "), h2: () => prefixar(() => "## "), h3: () => prefixar(() => "### "),
+  b: () => envolver("**", "negrito"), i: () => envolver("*", "itálico"), s: () => envolver("~~", "riscado"), c: () => envolver("`", "código"),
+  ul: () => prefixar(() => "- "), ol: () => prefixar((i) => `${i + 1}. `), q: () => prefixar(() => "> "),
+  a: () => editarMd((_, sel) => { const t = `[${sel || "texto"}](https://)`; return [t, t.length - 9, t.length - 1]; }),
+  t: () => editarMd((antes) => { const t = (antes && !antes.endsWith("\n\n") ? "\n\n" : "") + "| Coluna | Coluna |\n|---|---|\n| | |\n"; return [t, t.length, t.length]; }),
+  hr: () => editarMd((antes) => { const t = (antes && !antes.endsWith("\n") ? "\n" : "") + "\n---\n\n"; return [t, t.length, t.length]; }),
+};
+$("#toolbar").onclick = (e) => { const b = e.target.closest("[data-md]"); if (b) ACOES_MD[b.dataset.md](); };
+$("#ia-md").addEventListener("keydown", (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  if (e.key === "b") { e.preventDefault(); ACOES_MD.b(); }
+  if (e.key === "i") { e.preventDefault(); ACOES_MD.i(); }
+});
 
 $("#ed-modo").onclick = (e) => {
   const b = e.target.closest("[data-modo]");
   if (!b) return;
   $$("#ed-modo button").forEach((x) => x.classList.toggle("on", x === b));
   $("#editor").className = "editor" + (b.dataset.modo === "edit" ? " only-edit" : b.dataset.modo === "prev" ? " only-prev" : "");
+  requestAnimationFrame(ajustarZoom);
   try { localStorage.setItem("diario.modoEditor", b.dataset.modo); } catch {}
 };
 try { const m = localStorage.getItem("diario.modoEditor"); if (m) $(`#ed-modo [data-modo="${m}"]`)?.click(); } catch {}
@@ -928,7 +1202,7 @@ $("#ia-gerar").onclick = async () => {
   btn.disabled = true; btn.textContent = "Gerando… (1–2 min)";
   $("#ia-err").textContent = "";
   try {
-    const r = await api("POST", "/api/relatorio/rascunho", { ...chaveRascunho(), pedido: $("#ia-pedido").value });
+    const r = await api("POST", "/api/relatorio/rascunho", { ...chaveRascunho(), perfil: $("#r-perfil").value, pedido: $("#ia-pedido").value });
     $("#ia-md").value = r.markdown; renderPreview();
     $("#ed-info").textContent = "Rascunho gerado — revise antes de baixar";
     toast("Rascunho gerado");
@@ -937,22 +1211,24 @@ $("#ia-gerar").onclick = async () => {
 };
 
 /* ---------- entrega ---------- */
-async function renderChecks() {
-  if (!estado.modelos) { try { estado.modelos = await api("GET", "/api/modelos"); } catch { estado.modelos = {}; } }
-  const cfg = estado.cfg || {}, md = $("#ia-md").value;
-  const padrao = estado.modelos.padrao && /\.(docx|dotx)$/i.test(estado.modelos.padrao.nome);
-  const capaOk = cfg.titulo && cfg.autor;
+function renderChecks() {
+  const p = perfilRel(), md = $("#ia-md").value;
+  const temPadrao = !!p.arquivos?.padrao;
+  const capaOk = p.titulo || p.autor;
   const temSecao = /^#\s+\S/m.test(md);
   const semEntrega = filtrados().length && !filtrados().some((i) => i.entregavel);
+  const nRef = p.arquivos?.referencia?.length || 0;
   $("#checks").innerHTML = [
-    [padrao, padrao ? "Padrão da empresa enviado" : `Envie o padrão .docx em <a href="#config">Capa e modelos</a>`],
-    [capaOk, capaOk ? "Capa preenchida" : `Preencha a capa em <a href="#config">Capa e modelos</a>`],
+    [temPadrao, temPadrao ? `Template do modelo “${esc(p.nome)}”: ${esc(p.arquivos.padrao.nome)}`
+                          : `O modelo “${esc(p.nome || "")}” ainda não tem template — envie em <a href="#config">Configurações</a>`],
+    [nRef > 0, nRef ? `${nRef} relatório(s) de referência para a IA` : "Sem relatórios de referência (opcional, melhora o texto da IA)"],
+    [capaOk, capaOk ? "Capa preenchida" : `Preencha a capa em <a href="#config">Configurações</a>`],
     [temSecao, temSecao ? "Texto com seções" : "O texto precisa de ao menos uma seção (<code># Título</code>)"],
     [!semEntrega, semEntrega ? "Nenhuma atividade marcada como entrega (opcional, ajuda a IA)" : "Entregas marcadas"],
   ].map(([ok, t]) => `<li class="${ok ? "" : "no"}">${t}</li>`).join("");
-  const sub = (cfg.subtitulo || "").replace("{mes}", nomeMes(estado.relMes));
-  $("#capa-resumo").innerHTML = cfg.titulo
-    ? `Capa: <b>${esc(cfg.titulo.split("\n")[0])}</b> · ${esc(sub)} · v${esc(cfg.versao || "1.0")} — <a href="#config" style="color:var(--accent)">editar</a>` : "";
+  const sub = (p.subtitulo || "").replace("{mes}", nomeMes(estado.relMes));
+  $("#capa-resumo").innerHTML = p.titulo
+    ? `Capa: <b>${esc(p.titulo.split("\n")[0])}</b> · ${esc(sub)} · v${esc(p.versao || "1.0")}` : "";
 }
 
 $("#ia-docx").onclick = async () => {
@@ -961,7 +1237,7 @@ $("#ia-docx").onclick = async () => {
   const btn = $("#ia-docx"); btn.disabled = true;
   try {
     const r = await fetch("/api/relatorio/docx", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...chaveRascunho(), markdown: $("#ia-md").value }) });
+      body: JSON.stringify({ ...chaveRascunho(), perfil: $("#r-perfil").value, markdown: $("#ia-md").value }) });
     if (!r.ok) throw new Error((await r.json()).erro || "Erro ao gerar o .docx");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(await r.blob());
@@ -1000,46 +1276,110 @@ $("#m-copiar").onclick = async () => {
   catch { prompt("Copie o texto abaixo:", textoMes()); }
 };
 
-/* ============================ capa e modelos ============================ */
+/* ============================ modelos de relatório ============================ */
 const CAPA = ["titulo", "subtitulo", "autor", "area", "versao"];
-async function carregarCapa() {
-  await carregarConfig();
-  for (const c of CAPA) $("#c-" + c).value = estado.cfg[c] || "";
-  renderCover();
+let editProjetos = [];
+
+async function carregarPerfis() {
+  const r = await api("GET", "/api/perfis");
+  estado.perfis = r.perfis; estado.principal = r.principal;
+  if (!estado.perfis.some((p) => p.id === estado.perfilSel)) estado.perfilSel = r.principal;
+  return r;
 }
-function renderCover() {
-  const [t1, ...resto] = $("#c-titulo").value.split("\n");
-  const sub = $("#c-subtitulo").value.replace("{mes}", nomeMes(hoje().slice(0, 7)));
-  $("#cover").innerHTML = `<div class="top">${esc($("#c-autor").value)}<br>${esc($("#c-area").value)}</div>
-    <div class="t1">${esc(t1 || "Título")}</div><div class="t2">${esc(resto.join("\n"))}</div>
-    <div class="st">${esc(sub)}</div><div class="ft">${esc(sub)} – Versão ${esc($("#c-versao").value || "1.0")}</div>`;
+const perfilSel = () => estado.perfis.find((p) => p.id === estado.perfilSel);
+
+function renderPerfis() {
+  $("#perfil-lista").innerHTML = estado.perfis.map((p) => `
+    <button class="perfil-item ${p.id === estado.perfilSel ? "on" : ""}" data-perfil="${esc(p.id)}">
+      <b>${esc(p.nome)} ${p.id === estado.principal ? `<span class="badge">principal</span>` : ""}</b>
+      <span class="muted">${p.arquivos.padrao ? "✓ template" : "⚠ sem template"} · ${p.arquivos.referencia.length} referência(s)</span>
+      ${p.projetos.length ? `<span class="muted">${esc(p.projetos.join(", "))}</span>` : ""}
+    </button>`).join("");
+  const p = perfilSel();
+  $("#perfil-editor").classList.toggle("hidden", !p);
+  if (!p) return;
+  $("#p-nome").value = p.nome;
+  $("#p-principal").checked = p.id === estado.principal;
+  for (const c of CAPA) $("#c-" + c).value = p[c] || "";
+  editProjetos = [...p.projetos];
+  $("#capa-det").open = CAPA.some((c) => c !== "versao" && c !== "subtitulo" && p[c]);
+  renderTags(); renderArquivos(p);
 }
-CAPA.forEach((c) => $("#c-" + c).addEventListener("input", renderCover));
-$("#c-salvar").onclick = async () => {
-  const body = {};
+$("#perfil-lista").onclick = (e) => {
+  const b = e.target.closest("[data-perfil]");
+  if (b) { estado.perfilSel = b.dataset.perfil; $("#m-err").textContent = ""; renderPerfis(); }
+};
+$("#p-novo").onclick = async () => {
+  const nome = prompt("Nome do novo modelo (ex.: Cliente X, Indra – Saúde):");
+  if (!nome) return;
+  try {
+    const p = await api("POST", "/api/perfis", { nome, copiar_de: estado.perfilSel });
+    estado.perfilSel = p.id; await carregarPerfis(); renderPerfis();
+    toast("Modelo criado — envie o template e as referências");
+  } catch (err) { toast(err.message); }
+};
+$("#p-salvar").onclick = async () => {
+  const pendente = $("#p-projeto-in").value.trim();
+  if (pendente && !editProjetos.includes(pendente)) { editProjetos.push(pendente); $("#p-projeto-in").value = ""; renderTags(); }
+  const body = { nome: $("#p-nome").value, projetos: editProjetos, principal: $("#p-principal").checked };
   for (const c of CAPA) body[c] = $("#c-" + c).value;
-  try { await api("PUT", "/api/relatorio/config", body); estado.cfg = { ...estado.cfg, ...body }; toast("Capa salva"); }
+  try { await api("PUT", "/api/perfis/" + estado.perfilSel, body); await carregarPerfis(); renderPerfis(); toast("Modelo salvo"); }
+  catch (err) { $("#m-err").textContent = err.message; }
+};
+$("#p-excluir").onclick = async () => {
+  const p = perfilSel();
+  if (!p || !confirm(`Excluir o modelo “${p.nome}” com o template e as referências dele?`)) return;
+  try { await api("DELETE", "/api/perfis/" + p.id); estado.perfilSel = null; await carregarPerfis(); renderPerfis(); toast("Modelo excluído"); }
   catch (err) { $("#m-err").textContent = err.message; }
 };
 
-const fmtKB = (b) => (b / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " KB";
-const urlModelo = (tipo, nome) => `/api/modelos/${tipo}/${encodeURIComponent(nome)}`;
+function renderTags() {
+  const box = $("#p-projetos"), input = $("#p-projeto-in");
+  box.querySelectorAll(".chip").forEach((c) => c.remove());
+  for (const t of editProjetos) {
+    const c = document.createElement("span");
+    c.className = "chip proj"; c.style.setProperty("--c", cor(t));
+    c.innerHTML = `${esc(t)}<button type="button" title="Remover" data-tag="${esc(t)}">×</button>`;
+    box.insertBefore(c, input);
+  }
+}
+$("#p-projeto-in").addEventListener("keydown", (e) => {
+  const v = e.target.value.trim().replace(/,$/, "");
+  if ((e.key === "Enter" || e.key === ",") && v) {
+    e.preventDefault();
+    if (!editProjetos.includes(v)) editProjetos.push(v);
+    e.target.value = ""; renderTags();
+  } else if (e.key === "Backspace" && !e.target.value && editProjetos.length) { editProjetos.pop(); renderTags(); }
+});
+$("#p-projeto-in").addEventListener("input", (e) => {
+  // escolha na lista de sugestões entra na hora (no blur mudaria o layout no meio do clique em "Salvar")
+  if (e.inputType && e.inputType !== "insertReplacementText") return;
+  const v = e.target.value.trim();
+  if (v && sugestoes.projeto.includes(v) && !editProjetos.includes(v)) { editProjetos.push(v); e.target.value = ""; renderTags(); }
+});
+$("#p-projetos").onclick = (e) => {
+  const t = e.target.dataset.tag;
+  if (t) { editProjetos = editProjetos.filter((x) => x !== t); renderTags(); }
+  else $("#p-projeto-in").focus();
+};
 
-async function carregarModelos() {
-  const m = estado.modelos = await api("GET", "/api/modelos");
+const fmtKB = (b) => (b / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " KB";
+const urlArquivo = (tipo, nome) => `/api/perfis/${estado.perfilSel}/${tipo}/${encodeURIComponent(nome)}`;
+
+function renderArquivos(p) {
   $$("[data-modelo]").forEach((el) => {
     const tipo = el.dataset.modelo, multiplo = el.hasAttribute("data-multiplo");
-    const lista = multiplo ? m[tipo] : (m[tipo] ? [m[tipo]] : []);
+    const lista = multiplo ? p.arquivos[tipo] : (p.arquivos[tipo] ? [p.arquivos[tipo]] : []);
     el.querySelector(".drop").classList.toggle("enviado", lista.length > 0);
     el.querySelector(".status").innerHTML = multiplo
       ? `<div><b>Arraste os arquivos aqui</b></div><div class="small">ou clique para escolher · .docx, .dotx ou .pdf</div>`
       : lista.length
-        ? `<div class="ok">✓ Padrão configurado</div><div class="small" style="margin-top:4px">Arraste ou clique para substituir</div>`
-        : `<div><b>Arraste o arquivo aqui</b></div><div class="small">ou clique para escolher · .docx ou .dotx</div>`;
+        ? `<div class="ok">✓ Template configurado</div><div class="small" style="margin-top:4px">Arraste ou clique para substituir</div>`
+        : `<div><b>Arraste o template aqui</b></div><div class="small">ou clique para escolher · .docx ou .dotx</div>`;
     el.querySelector(".arquivos").innerHTML = lista.map((i) => `
       <li><span class="nome">${esc(i.nome)}
           <div class="muted small">${esc(i.enviado_em)} · ${fmtKB(i.tamanho)}</div></span>
-        <a class="btn sm" href="${urlModelo(tipo, i.nome)}">Baixar</a>
+        <a class="btn sm" href="${urlArquivo(tipo, i.nome)}">Baixar</a>
         <button class="btn sm danger" data-remover="${esc(i.nome)}">Remover</button></li>`).join("")
       || (multiplo ? `<li class="muted small">Nenhuma referência enviada.</li>` : "");
   });
@@ -1051,7 +1391,7 @@ async function enviarModelos(tipo, files) {
   for (const file of files) {
     if (!/\.(docx|dotx|pdf)$/i.test(file.name)) { erros.push(`${file.name}: envie .docx, .dotx ou .pdf.`); continue; }
     try {
-      const r = await fetch(`/api/modelos/${tipo}?nome=${encodeURIComponent(file.name)}`, { method: "POST",
+      const r = await fetch(`/api/perfis/${estado.perfilSel}/${tipo}?nome=${encodeURIComponent(file.name)}`, { method: "POST",
         headers: { "Content-Type": "application/octet-stream" }, body: file });
       const data = await r.json();
       if (!r.ok) throw new Error(data.erro || "Erro ao enviar");
@@ -1060,7 +1400,7 @@ async function enviarModelos(tipo, files) {
   }
   $("#m-err").innerHTML = erros.map(esc).join("<br>");
   if (ok) toast(ok > 1 ? `${ok} arquivos enviados` : "Arquivo enviado");
-  carregarModelos();
+  await carregarPerfis(); renderPerfis();
 }
 
 $$("[data-modelo]").forEach((el) => {
@@ -1076,15 +1416,118 @@ $$("[data-modelo]").forEach((el) => {
   el.querySelector(".arquivos").onclick = async (e) => {
     const nome = e.target.dataset.remover;
     if (!nome || !confirm(`Remover "${nome}"?`)) return;
-    await api("DELETE", urlModelo(tipo, nome));
-    toast("Arquivo removido"); carregarModelos();
+    await api("DELETE", urlArquivo(tipo, nome));
+    toast("Arquivo removido"); await carregarPerfis(); renderPerfis();
   };
 });
+
+/* ============================ inteligência artificial ============================ */
+const SUGESTOES_MODELO = {
+  openai: ["gpt-5.5", "gpt-5.5-mini", "gpt-5", "gpt-4.1"],
+  anthropic: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
+  compativel: [],
+};
+const DICAS = {
+  openai: "Chave em platform.openai.com → API keys. PDFs de referência são lidos direto.",
+  anthropic: "Chave em console.anthropic.com → API keys. PDFs de referência são lidos direto.",
+  compativel: "Qualquer API no formato /chat/completions: Azure OpenAI, OpenRouter, Groq, Mistral, Gemini, DeepSeek, Ollama, LM Studio… " +
+              "Use referências em .docx (PDF não é lido por este tipo). Para Ollama local a chave é opcional.",
+};
+async function carregarIA() {
+  const ia = await carregarConfig();
+  $("#ia-provedor").innerHTML = Object.entries(ia.provedores).map(([k, v]) => `<option value="${k}">${esc(v.nome)}</option>`).join("");
+  $("#ia-provedor").value = ia.provedor;
+  $("#ia-modelo").value = ia.modelo;
+  $("#ia-base").value = ia.base_url;
+  $("#ia-chave").value = ""; $("#ia-chave").placeholder = ia.chave ? `chave salva (${ia.chave}) — cole outra para trocar` : "cole a chave aqui";
+  $("#ia-resultado").textContent = "";
+  renderIAForm();
+}
+function renderIAForm() {
+  const prov = $("#ia-provedor").value, info = estado.ia.provedores[prov];
+  $("#dl-modelos").innerHTML = (SUGESTOES_MODELO[prov] || []).map((m) => `<option value="${m}">`).join("");
+  $("#ia-dica").textContent = DICAS[prov] || "";
+  $("#ia-base").placeholder = info.base_url;
+  $("#ia-pill").textContent = estado.ia.ativa ? `ativa · ${estado.ia.provedores[estado.ia.provedor].nome}` : "desligada";
+  $("#ia-pill").classList.toggle("on", !!estado.ia.ativa);
+}
+$("#ia-provedor").onchange = () => {
+  const prov = $("#ia-provedor").value, info = estado.ia.provedores[prov];
+  $("#ia-modelo").value = prov === estado.ia.provedor ? estado.ia.modelo : info.modelo;
+  $("#ia-base").value = prov === estado.ia.provedor ? estado.ia.base_url : info.base_url;
+  renderIAForm();
+};
+async function salvarIA(extra = {}) {
+  const body = { provedor: $("#ia-provedor").value, modelo: $("#ia-modelo").value, base_url: $("#ia-base").value,
+                 chave: $("#ia-chave").value, ...extra };
+  await api("PUT", "/api/ia", body);
+  await carregarIA();
+}
+$("#ia-salvar").onclick = async () => {
+  try { await salvarIA(); toast("IA configurada"); } catch (err) { $("#ia-resultado").textContent = err.message; }
+};
+$("#ia-limpar").onclick = async () => {
+  if (!confirm("Apagar a chave salva?")) return;
+  try { await salvarIA({ limpar_chave: true }); toast("Chave apagada"); } catch (err) { $("#ia-resultado").textContent = err.message; }
+};
+$("#ia-testar").onclick = async () => {
+  const btn = $("#ia-testar"); btn.disabled = true; $("#ia-resultado").textContent = "Testando…";
+  try {
+    await salvarIA();
+    const r = await api("POST", "/api/ia/testar");
+    $("#ia-resultado").innerHTML = `<span style="color:var(--ok)">✓ Conectado</span> — resposta: “${esc(r.resposta)}”`;
+  } catch (err) { $("#ia-resultado").innerHTML = `<span style="color:var(--danger)">✗ ${esc(err.message)}</span>`; }
+  finally { btn.disabled = false; }
+};
+
+/* ============================ aparência ============================ */
+const CORES = [
+  { nome: "Petróleo", l: "#0b6e74", d: "#3cbfc1" }, { nome: "Azul", l: "#1f5fd1", d: "#6ea2ff" },
+  { nome: "Violeta", l: "#6d3fc9", d: "#a98bff" }, { nome: "Verde", l: "#2f7d32", d: "#6cc070" },
+  { nome: "Laranja", l: "#c2410c", d: "#fb8a4c" }, { nome: "Rosa", l: "#be185d", d: "#f472b6" },
+  { nome: "Grafite", l: "#3f4a54", d: "#aab6bf" },
+];
+function lerTema() { try { return JSON.parse(localStorage.getItem("diario.tema") || "{}"); } catch { return {}; } }
+function aplicarTema(t) {
+  const root = document.documentElement;
+  if (t.modo && t.modo !== "auto") root.dataset.theme = t.modo; else delete root.dataset.theme;
+  const c = CORES.find((x) => x.l === t.l) || CORES[0];
+  root.style.setProperty("--accent-l", c.l); root.style.setProperty("--accent-d", c.d);
+  try { localStorage.setItem("diario.tema", JSON.stringify({ modo: t.modo || "auto", l: c.l, d: c.d })); } catch {}
+  renderTema();
+}
+function renderTema() {
+  const t = lerTema();
+  $$("#tema-modo button").forEach((b) => b.classList.toggle("on", b.dataset.modo === (t.modo || "auto")));
+  $("#tema-cor").innerHTML = CORES.map((c) => `<button title="${c.nome}" data-cor="${c.l}" class="${(t.l || CORES[0].l) === c.l ? "on" : ""}"
+    style="background:linear-gradient(135deg, ${c.l} 50%, ${c.d} 50%)"></button>`).join("");
+}
+$("#tema-modo").onclick = (e) => { const b = e.target.closest("[data-modo]"); if (b) aplicarTema({ ...lerTema(), modo: b.dataset.modo }); };
+$("#tema-cor").onclick = (e) => { const b = e.target.closest("[data-cor]"); if (b) aplicarTema({ ...lerTema(), l: b.dataset.cor }); };
+$("#tema-rapido").onclick = () => {
+  const escuroAgora = getComputedStyle(document.documentElement).colorScheme.includes("dark");
+  aplicarTema({ ...lerTema(), modo: escuroAgora ? "light" : "dark" });
+};
+
 // soltar o arquivo fora da área não deve abrir o .docx no navegador
 window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => e.preventDefault());
 
+/* ============================ versão ============================ */
+const VERSAO = "4";
+async function conferirVersao() {
+  let v = null;
+  try { v = (await api("GET", "/api/versao")).versao; } catch {}
+  if (v !== VERSAO) {
+    const b = $("#banner-versao");
+    b.innerHTML = `⚠ O servidor do app está numa versão antiga — algumas funções não vão responder. Reinicie o app:
+      <code>systemctl --user restart diario-atividades</code> (ou pare e rode <code>python3 app.py</code> de novo) e recarregue a página.`;
+    b.classList.remove("hidden");
+  }
+}
+
 /* ============================ início ============================ */
+conferirVersao();
 carregarSugestoes();
 carregarConfig();
 rota();
