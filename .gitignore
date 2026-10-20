@@ -2,3 +2,10 @@ __pycache__/
 *.pyc
 data/*.db
 data/*.db-*
+modelos/padrao/*
+!modelos/padrao/.gitkeep
+modelos/referencia/*
+!modelos/referencia/.gitkeep
+.env
+data/*.json
+data/rascunhos/

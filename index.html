@@ -57,6 +57,23 @@
   th { font-size: 12px; color: var(--muted); font-weight: 600; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .report-day td { white-space: pre-wrap; }
+  .modelos { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+  .modelos .card { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+  .modelos h3 { font-size: 15px; margin: 0; }
+  .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 28px 16px; text-align: center;
+          cursor: pointer; color: var(--muted); transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--chip); color: var(--text); }
+  .drop .icone { font-size: 30px; display: block; margin-bottom: 6px; }
+  .drop.enviado { border-style: solid; border-color: #2f9e57; color: var(--text); }
+  .drop .ok { color: #2f9e57; font-weight: 600; }
+  .arquivos { list-style: none; margin: 0; padding: 0; }
+  .arquivos li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .arquivos li:first-child { border-top: 0; }
+  .arquivos .nome { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+  .ia textarea.md { min-height: 420px; font: 13px/1.5 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+  .ia details summary { cursor: pointer; color: var(--muted); font-size: 13px; margin: 4px 0 8px; }
+  .ia .capa { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .ia .capa textarea { min-height: 52px; }
   .empty { padding: 24px 0; text-align: center; color: var(--muted); }
   .hidden { display: none !important; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -77,6 +94,7 @@
   <nav>
     <button data-tab="dia" class="on">Dia</button>
     <button data-tab="mes">Relatório do mês</button>
+    <button data-tab="modelos">Modelos</button>
   </nav>
 </header>
 
@@ -125,7 +143,58 @@
         <button class="btn primary" id="m-imprimir">Imprimir / PDF</button>
       </div>
     </div>
+    <div class="card no-print ia">
+      <div class="row" style="align-items:center">
+        <h3 style="font-size:15px;margin:0">Relatório .docx no padrão da empresa</h3>
+        <span class="muted" id="ia-status" style="font-size:13px"></span>
+        <span class="grow"></span>
+        <button class="btn" id="ia-gerar">✨ Gerar texto com IA</button>
+        <button class="btn primary" id="ia-docx">Baixar .docx</button>
+      </div>
+      <details>
+        <summary>Dados da capa</summary>
+        <div class="capa">
+          <label>Título (1ª linha fica em destaque)<textarea id="c-titulo" rows="2"></textarea></label>
+          <label>Subtítulo — <code>{mes}</code> vira o mês<input id="c-subtitulo"></label>
+          <label>Autor – cargo<input id="c-autor"></label>
+          <label>Área<input id="c-area"></label>
+          <label>Versão<input id="c-versao" style="width:90px"></label>
+        </div>
+        <button class="btn small" id="c-salvar">Salvar capa</button>
+      </details>
+      <label>Texto do relatório — revise antes de baixar
+        (<code>#</code> seção, <code>##</code> subseção, <code>-</code> lista, <code>| a | b |</code> tabela, <code>**negrito**</code>)
+        <textarea class="md" id="ia-md" placeholder="Clique em “Gerar texto com IA” para criar o rascunho a partir das atividades do mês e das referências."></textarea>
+      </label>
+      <p class="err" id="ia-err"></p>
+    </div>
     <div class="card" id="report"></div>
+  </section>
+
+  <!-- ============ ABA MODELOS ============ -->
+  <section id="tab-modelos" class="hidden">
+    <div class="card">
+      <h2 style="font-size:16px;margin:0 0 4px">Modelos do relatório</h2>
+      <p class="muted" style="margin:0;font-size:13px">Arraste o arquivo para a área ou clique nela para escolher.
+        Os arquivos ficam só nesta máquina (pasta <code>modelos/</code>) e não vão para o GitHub.</p>
+    </div>
+    <div class="modelos">
+      <div class="card" data-modelo="padrao">
+        <div><h3>Padrão da empresa</h3>
+          <div class="muted" style="font-size:13px">Um arquivo só, com logo, cabeçalho, rodapé, fontes e cores. Pasta <code>modelos/padrao/</code>.</div></div>
+        <div class="drop" tabindex="0"><span class="icone">📄</span><div class="status"></div></div>
+        <input type="file" accept=".docx,.dotx,.pdf" class="hidden">
+        <ul class="arquivos"></ul>
+      </div>
+      <div class="card" data-modelo="referencia" data-multiplo>
+        <div><h3>Relatórios de referência</h3>
+          <div class="muted" style="font-size:13px">Até 10 relatórios prontos, do jeito que o cliente espera. Pasta <code>modelos/referencia/</code>.</div></div>
+        <div class="drop" tabindex="0"><span class="icone">📚</span><div class="status"></div></div>
+        <input type="file" accept=".docx,.dotx,.pdf" class="hidden" multiple>
+        <ul class="arquivos"></ul>
+      </div>
+    </div>
+    <p class="err" id="m-err"></p>
   </section>
 </main>
 
@@ -163,9 +232,10 @@ async function api(method, url, body) {
 /* ---------------- abas ---------------- */
 document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
   document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("on", x === b));
-  $("#tab-dia").classList.toggle("hidden", b.dataset.tab !== "dia");
-  $("#tab-mes").classList.toggle("hidden", b.dataset.tab !== "mes");
-  if (b.dataset.tab === "mes") carregarMes(); else carregarDia();
+  for (const t of ["dia", "mes", "modelos"]) $("#tab-" + t).classList.toggle("hidden", b.dataset.tab !== t);
+  if (b.dataset.tab === "mes") { carregarMes(); carregarIA(); }
+  else if (b.dataset.tab === "modelos") carregarModelos();
+  else carregarDia();
 });
 
 /* ---------------- sugestões ---------------- */
@@ -334,8 +404,8 @@ function textoMes() {
   return out;
 }
 
-$("#m-mes").onchange = carregarMes;
-$("#m-projeto").onchange = renderMes;
+$("#m-mes").onchange = () => { carregarMes(); carregarRascunho(); };
+$("#m-projeto").onchange = () => { renderMes(); carregarRascunho(); };
 $("#m-imprimir").onclick = () => window.print();
 $("#m-csv").onclick = () => { location.href = "/api/exportar.csv?mes=" + $("#m-mes").value +
   "&projeto=" + encodeURIComponent($("#m-projeto").value); };
@@ -343,6 +413,133 @@ $("#m-copiar").onclick = async () => {
   try { await navigator.clipboard.writeText(textoMes()); toast("Texto copiado"); }
   catch { prompt("Copie o texto abaixo:", textoMes()); }
 };
+
+/* ---------------- relatório .docx com IA ---------------- */
+const CAPA = ["titulo", "subtitulo", "autor", "area", "versao"];
+const chaveRascunho = () => ({ mes: $("#m-mes").value, projeto: $("#m-projeto").value });
+
+async function carregarIA() {
+  const cfg = await api("GET", "/api/relatorio/config");
+  for (const c of CAPA) $("#c-" + c).value = cfg[c] || "";
+  $("#ia-status").textContent = cfg.ia ? `IA: ${cfg.modelo}` : "IA desligada: configure OPENAI_API_KEY no .env";
+  $("#ia-gerar").disabled = !cfg.ia;
+  carregarRascunho();
+}
+
+async function carregarRascunho() {
+  const { mes, projeto } = chaveRascunho();
+  if (!mes) return;
+  const r = await api("GET", `/api/relatorio/rascunho?mes=${mes}&projeto=${encodeURIComponent(projeto)}`);
+  $("#ia-md").value = r.markdown;
+  $("#ia-err").textContent = "";
+}
+
+let salvarRascunhoT;
+$("#ia-md").oninput = () => {
+  clearTimeout(salvarRascunhoT);
+  salvarRascunhoT = setTimeout(() => api("PUT", "/api/relatorio/rascunho",
+    { ...chaveRascunho(), markdown: $("#ia-md").value }).catch(() => {}), 600);
+};
+
+$("#c-salvar").onclick = async () => {
+  const body = {};
+  for (const c of CAPA) body[c] = $("#c-" + c).value;
+  try { await api("PUT", "/api/relatorio/config", body); toast("Capa salva"); }
+  catch (err) { $("#ia-err").textContent = err.message; }
+};
+
+$("#ia-gerar").onclick = async () => {
+  if ($("#ia-md").value.trim() && !confirm("Substituir o texto atual por um novo rascunho da IA?")) return;
+  const btn = $("#ia-gerar"), txt = btn.textContent;
+  btn.disabled = true; btn.textContent = "Gerando… (pode levar 1–2 min)";
+  $("#ia-err").textContent = "";
+  try {
+    const r = await api("POST", "/api/relatorio/rascunho", chaveRascunho());
+    $("#ia-md").value = r.markdown; toast("Rascunho gerado — revise o texto");
+  } catch (err) { $("#ia-err").textContent = err.message; }
+  finally { btn.disabled = false; btn.textContent = txt; }
+};
+
+$("#ia-docx").onclick = async () => {
+  $("#ia-err").textContent = "";
+  if (!$("#ia-md").value.trim()) { $("#ia-err").textContent = "Gere ou escreva o texto do relatório primeiro."; return; }
+  try {
+    const r = await fetch("/api/relatorio/docx", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...chaveRascunho(), markdown: $("#ia-md").value }) });
+    if (!r.ok) throw new Error((await r.json()).erro || "Erro ao gerar o .docx");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(await r.blob());
+    const proj = $("#m-projeto").value;
+    a.download = `Relatório de Atividades - ${nomeMes()}${proj ? " - " + proj : ""}.docx`;
+    a.click(); URL.revokeObjectURL(a.href);
+  } catch (err) { $("#ia-err").textContent = err.message; }
+};
+
+/* ---------------- modelos .docx ---------------- */
+const fmtKB = (b) => (b / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " KB";
+
+const urlModelo = (tipo, nome) => `/api/modelos/${tipo}/${encodeURIComponent(nome)}`;
+
+async function carregarModelos() {
+  const m = await api("GET", "/api/modelos");
+  document.querySelectorAll("[data-modelo]").forEach((el) => {
+    const tipo = el.dataset.modelo, multiplo = el.hasAttribute("data-multiplo");
+    const lista = multiplo ? m[tipo] : (m[tipo] ? [m[tipo]] : []);
+    el.querySelector(".drop").classList.toggle("enviado", lista.length > 0);
+    el.querySelector(".status").innerHTML = multiplo
+      ? `<div><b>Arraste os arquivos aqui</b></div><div style="font-size:13px">ou clique para escolher (pode selecionar vários) · .docx, .dotx ou .pdf</div>`
+      : lista.length
+        ? `<div class="ok">✔ Arquivo enviado</div><div style="font-size:13px;margin-top:6px">Arraste ou clique para substituir</div>`
+        : `<div><b>Arraste o arquivo aqui</b></div><div style="font-size:13px">ou clique para escolher · .docx, .dotx ou .pdf</div>`;
+    el.querySelector(".arquivos").innerHTML = lista.map((i) => `
+      <li><span class="nome">${esc(i.nome)}
+          <div class="muted" style="font-size:12px">${esc(i.enviado_em)} · ${fmtKB(i.tamanho)}</div></span>
+        <a class="btn small" href="${urlModelo(tipo, i.nome)}">Baixar</a>
+        <button class="btn small danger" data-remover="${esc(i.nome)}">Remover</button></li>`).join("")
+      || (multiplo ? `<li class="muted" style="font-size:13px">Nenhuma referência enviada.</li>` : "");
+  });
+}
+
+async function enviarModelos(tipo, files) {
+  $("#m-err").textContent = "";
+  const erros = [];
+  let ok = 0;
+  for (const file of files) {
+    if (!/\.(docx|dotx|pdf)$/i.test(file.name)) { erros.push(`${file.name}: envie .docx, .dotx ou .pdf.`); continue; }
+    try {
+      const r = await fetch(`/api/modelos/${tipo}?nome=${encodeURIComponent(file.name)}`, { method: "POST",
+        headers: { "Content-Type": "application/octet-stream" }, body: file });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.erro || "Erro ao enviar");
+      ok++;
+    } catch (err) { erros.push(`${file.name}: ${err.message}`); }
+  }
+  $("#m-err").innerHTML = erros.map(esc).join("<br>");
+  if (ok) toast(ok > 1 ? `${ok} arquivos enviados` : "Arquivo enviado");
+  carregarModelos();
+}
+
+document.querySelectorAll("[data-modelo]").forEach((el) => {
+  const tipo = el.dataset.modelo, multiplo = el.hasAttribute("data-multiplo");
+  const input = el.querySelector("input[type=file]"), drop = el.querySelector(".drop");
+  const enviar = (files) => enviarModelos(tipo, multiplo ? [...files] : [...files].slice(0, 1));
+  drop.onclick = () => input.click();
+  drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } };
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); enviar(e.dataTransfer.files); };
+  input.onchange = () => { const f = [...input.files]; input.value = ""; enviar(f); };
+  el.querySelector(".arquivos").onclick = async (e) => {
+    const nome = e.target.dataset.remover;
+    if (!nome || !confirm(`Remover "${nome}"?`)) return;
+    await api("DELETE", urlModelo(tipo, nome));
+    toast("Arquivo removido"); carregarModelos();
+  };
+});
+
+// soltar o arquivo fora da área não deve abrir o .docx no navegador
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", (e) => e.preventDefault());
 
 /* ---------------- início ---------------- */
 carregarSugestoes();
