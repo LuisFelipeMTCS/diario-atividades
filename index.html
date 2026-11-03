@@ -594,6 +594,7 @@ Texto com **negrito**, *itálico*, ~~riscado~~ e [link](https://…).
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
               Baixar .docx</button>
             <div class="row">
+              <button class="btn sm" id="ia-md-baixar" title="Baixa o texto do relatório em Markdown">Baixar .md</button>
               <button class="btn sm" id="m-copiar" title="Copia a lista de atividades em texto">Copiar lista</button>
               <button class="btn sm" id="m-csv">Excel (CSV)</button>
               <button class="btn sm" id="m-imprimir" title="Imprime a lista de atividades">Imprimir</button>
@@ -1365,6 +1366,17 @@ $("#ia-docx").onclick = async () => {
     toast("Relatório baixado");
   } catch (err) { $("#ia-err").textContent = err.message; toast(err.message); }
   finally { btn.disabled = false; }
+};
+
+$("#ia-md-baixar").onclick = () => {
+  const md = $("#ia-md").value;
+  if (!md.trim()) { $("#ia-err").textContent = "Gere ou escreva o texto do relatório primeiro."; $("#ia-md").focus(); return; }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([md], { type: "text/markdown;charset=utf-8" }));
+  const proj = filtroProjeto();
+  a.download = `Relatório de Atividades - ${nomeMes(estado.relMes)}${proj ? " - " + proj : ""}.md`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast("Markdown baixado");
 };
 
 function textoMes() {
